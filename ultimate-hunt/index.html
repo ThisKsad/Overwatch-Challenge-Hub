@@ -547,8 +547,8 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
     li.innerHTML = '<button class="lb" type="button" data-player="' + p.id + '">' +
       '<span class="rank">1</span>' +
       '<span class="who"><span>' + p.name + '</span><span class="lead" hidden>Leading</span></span>' +
-      '<span class="tot"><span data-b="total">0</span><small>ultimates</small></span>' +
-      '<span class="sub"><span data-b="done">0</span> / ' + N + ' heroes · <span data-b="missing">' + N + '</span> missing</span>' +
+      '<span class="tot"><span data-b="big">0</span><small data-b="biglabel">heroes</small></span>' +
+      '<span class="sub"><span data-b="small">0</span> · <span data-b="missing">' + N + '</span> heroes missing</span>' +
       '<span class="meter"><i data-b="bar"></i></span></button>';
     boardEl.appendChild(li);
     boardRows[p.id] = li;
@@ -610,8 +610,10 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
       var li = boardRows[r.id];
       li.style.order = i;
       $('.rank', li).textContent = rank;
-      $('[data-b="total"]', li).textContent = r.total;
-      $('[data-b="done"]', li).textContent = r.done;
+      var byHeroes = rankMode !== 'ults';
+      $('[data-b="big"]', li).textContent = byHeroes ? r.done : r.total;
+      $('[data-b="biglabel"]', li).textContent = byHeroes ? '/ ' + N + ' heroes' : 'ultimates';
+      $('[data-b="small"]', li).textContent = byHeroes ? r.total + ' ultimates' : r.done + ' / ' + N + ' heroes';
       $('[data-b="missing"]', li).textContent = N - r.done;
       $('[data-b="bar"]', li).style.width = (r.done / N * 100) + '%';
       $('.lead', li).hidden = !(rank === 1 && r.total > 0);
