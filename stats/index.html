@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try{var t=localStorage.getItem("mystery-hub-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<title>All-time stats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: three tabs (own cards, one shared card, challenge list). Both card tabs show a 5x5 board with reset buttons; the list tab holds the pool the cards are drawn from. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --surface2: #e2e6ed;
+  --line: #cdd3dd;
+  --fg: #121826;
+  --muted: #566074;
+  --accent: #a35f00;
+  --accent-fill: #f5a524;
+  --on-accent: #1a1203;
+  --tank: #2f6fed;
+  --damage: #d9363e;
+  --support: #0f7d58;
+  --danger: #c0262d;
+  --good: #0f7d58;
+  --warn: #a35f00;
+  --f-display: 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif;
+  --f-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1118; --surface: #141b26; --surface2: #1c2533; --line: #2a3547; --fg: #e7ecf4; --muted: #8a97ad;
+    --accent: #ffb340; --accent-fill: #ffb340; --on-accent: #1a1203;
+    --tank: #5b97ff; --damage: #f0555c; --support: #2fc795;
+    --danger: #e5484d; --good: #2fc795; --warn: #ffb340;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1118; --surface: #141b26; --surface2: #1c2533; --line: #2a3547; --fg: #e7ecf4; --muted: #8a97ad;
+  --accent: #ffb340; --accent-fill: #ffb340; --on-accent: #1a1203;
+  --tank: #5b97ff; --damage: #f0555c; --support: #2fc795;
+  --danger: #e5484d; --good: #2fc795; --warn: #ffb340;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-inline: 16px; padding-block: 18px 48px;
+}
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; min-width: 0; }
+
+/* Header */
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.brand h1 { margin: 0; font: 700 clamp(36px, 9vw, 52px)/0.95 var(--f-display); letter-spacing: 0.02em; text-transform: uppercase; text-wrap: balance; }
+.brand p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.back { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0 0 8px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.back:hover { color: var(--fg); }
+.tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tag { font: 600 11px/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 4px 9px; }
+.icon-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.icon-btn:hover { background: var(--surface2); }
+.icon-btn svg { width: 16px; height: 16px; }
+.btn { font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.btn:hover:not(:disabled) { background: var(--surface2); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-size: 16px; padding: 11px 22px; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.06); background: var(--accent-fill); }
+.btn.good { background: var(--good); border-color: var(--good); color: #fff; font-size: 16px; padding: 11px 22px; }
+.btn.good:hover:not(:disabled) { filter: brightness(1.08); background: var(--good); }
+.btn.outline-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger:hover { filter: brightness(1.08); background: var(--danger); }
+.linkish { background: none; border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; }
+.linkish:hover:not(:disabled) { color: var(--fg); }
+.linkish.warn:hover:not(:disabled) { color: var(--danger); }
+.linkish:disabled { opacity: 0.4; cursor: default; text-decoration: none; }
+.chk { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; min-height: 32px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--accent-fill); flex: none; }
+.chk input:disabled { cursor: default; }
+.done { margin-top: 22px; padding: 30px 20px; text-align: center; background: var(--surface); border: 1px solid var(--accent-fill); border-radius: 12px; display: grid; justify-items: center; gap: 12px; }
+.done h2 { margin: 0; font: 700 clamp(44px, 12vw, 76px)/0.95 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); text-wrap: balance; }
+.done p { margin: 0; max-width: 46ch; color: var(--muted); }
+.done-names { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.done-names span { font: 600 20px/1 var(--f-display); letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--good); color: var(--good); }
+.scrim { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(5, 8, 14, 0.62); }
+.dialog { width: 100%; max-width: 420px; padding: 22px; border-radius: 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.dialog h2 { margin: 0 0 8px; font: 700 28px/1.05 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.dialog p { margin: 0 0 20px; color: var(--muted); }
+.dlg-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 60; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 8px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 14px; }
+.toast button { background: none; border: 0; color: var(--accent-fill); font-weight: 700; cursor: pointer; font-size: 14px; }
+.page-foot { margin-top: 30px; color: var(--muted); font-size: 13px; }
+
+
+:root { --p-lukas: #2f6fed; --p-philipp: #b4398f; --p-daniel: #0f7d58; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --p-lukas: #5b97ff; --p-philipp: #e270c0; --p-daniel: #2fc795; }
+}
+:root[data-theme="dark"] { --p-lukas: #5b97ff; --p-philipp: #e270c0; --p-daniel: #2fc795; }
+
+.tabs { display: flex; gap: 4px; margin-top: 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: 10px 14px; font: 600 16px var(--f-body); color: var(--muted); cursor: pointer; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent-fill); }
+
+.panel { margin-top: 18px; display: grid; gap: 14px; min-width: 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lbl { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 600 14px var(--f-body); cursor: pointer; font-variant-numeric: tabular-nums; }
+.pill:hover { background: var(--surface2); }
+.pill i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); flex: none; }
+.pill small { font-weight: 500; color: var(--muted); font-size: 13px; }
+.pill[aria-pressed="true"] { border-color: var(--pc); box-shadow: 0 0 0 1px var(--pc); }
+
+.cardbar { display: flex; gap: 8px 10px; flex-wrap: wrap; align-items: center; }
+.cardbar .sp { flex: 1 1 auto; }
+.score { font: 700 26px/1 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.score span { font: 500 14px var(--f-body); color: var(--muted); letter-spacing: 0; text-transform: none; margin-left: 6px; }
+
+.board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 6px; max-width: 760px; }
+.cell { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: clamp(76px, 17vw, 124px); padding: 16px 3px 8px; hyphens: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; font: 500 clamp(10px, 2.6vw, 14.5px)/1.2 var(--f-body); overflow-wrap: break-word; min-width: 0; }
+.cell:hover { background: var(--surface2); }
+.cell .t { display: block; min-width: 0; }
+.cell .mark { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--pc); color: #fff; display: none; place-items: center; font: 700 11px/1 var(--f-body); }
+.cell .mark svg { width: 11px; height: 11px; }
+.cell[aria-pressed="true"] { background: var(--tint, color-mix(in srgb, var(--pc) 20%, var(--surface))); border-color: var(--pc); }
+.cell[aria-pressed="true"] .mark { display: grid; }
+.cell .marks { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
+.cell[aria-pressed="true"] .marks { display: flex; }
+.cell .mk { width: 18px; height: 18px; border-radius: 50%; background: var(--mc); color: #fff; display: grid; place-items: center; font: 700 11px/1 var(--f-body); }
+.cell[aria-pressed="true"] .t { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--fg) 45%, transparent); }
+.cell.line { background: var(--tint-line, color-mix(in srgb, var(--pc) 42%, var(--surface))); border-width: 2px; font-weight: 600; }
+.cell.line .t { text-decoration: none; }
+
+.hint { margin: 0; color: var(--muted); font-size: 13px; max-width: 70ch; }
+.notice { padding: 12px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warn); font-size: 14px; max-width: 760px; }
+
+.tally { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tally b { color: var(--fg); }
+.tally span { display: inline-flex; align-items: center; gap: 6px; }
+.tally i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
+
+.poolbar { display: grid; gap: 12px; }
+.addrow { display: flex; gap: 8px; flex-wrap: wrap; max-width: 760px; }
+.addrow input { flex: 1 1 240px; min-width: 0; font: 400 15px var(--f-body); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.addrow input::placeholder { color: var(--muted); }
+.plist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-width: 760px; }
+.prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.prow.off { background: transparent; }
+.prow.off .chk span { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.prow .chk { flex: 1 1 auto; min-width: 0; }
+.prow .chk span { min-width: 0; overflow-wrap: anywhere; }
+.rm { flex: none; width: 32px; height: 32px; border-radius: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.rm:hover { background: var(--surface2); color: var(--danger); }
+.rm svg { width: 14px; height: 14px; }
+.count { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.count b { color: var(--fg); }
+@media (prefers-reduced-motion: no-preference) { .cell { transition: background 0.15s, border-color 0.15s; } }
+html { background: var(--bg); }
+body { margin: 0; min-height: 100vh; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.back-link { display: inline-block; margin-bottom: 10px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.back-link:hover { color: var(--fg); }
+.sync { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync[data-state="live"] .dot { background: var(--good); }
+.sync[data-state="saving"] .dot { background: var(--warn); }
+.sync[data-state="error"] .dot { background: var(--danger); }
+.winner { margin: 18px 0 0; padding: 22px 18px; border: 2px solid var(--accent-fill); border-radius: 12px; background: var(--surface); text-align: center; display: grid; gap: 10px; justify-items: center; position: relative; overflow: hidden; }
+.winner::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--accent-fill) 30%, transparent), transparent 65%); pointer-events: none; }
+.winner > * { position: relative; }
+.winner .w-tag { font: 600 11px/1 var(--f-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 5px 10px; }
+.winner h2 { margin: 0; font: 700 clamp(40px, 11vw, 68px)/0.95 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); text-wrap: balance; }
+.winner p { margin: 0; max-width: 56ch; color: var(--muted); }
+.winner .w-rows { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.winner .w-rows span { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.winner .w-rows span.win { border-color: var(--accent-fill); font-weight: 600; }
+.winner .w-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: center; align-items: center; margin-top: 4px; }
+@media (prefers-reduced-motion: no-preference) { .winner { animation: wpop 0.5s cubic-bezier(.3,1.4,.5,1); } @keyframes wpop { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } } }
+.brand h1 { margin: 0; font: 700 clamp(36px, 9vw, 52px)/0.95 var(--f-display); letter-spacing: 0.02em; text-transform: uppercase; text-wrap: balance; }
+.stats-note { margin: 14px 0 0; padding: 10px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warn); font-size: 14px; }
+.vs-strip { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.pcol { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; border-top: 4px solid var(--pc); }
+.pcol h2 { margin: 0; font: 700 30px/1 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.pcol .big { font: 700 clamp(38px, 9vw, 52px)/0.95 var(--f-display); font-variant-numeric: tabular-nums; }
+.pcol .big small { font: 500 14px var(--f-body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.kv { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.kv li { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
+.kv li span:first-child { color: var(--muted); }
+.kv li b { font-variant-numeric: tabular-nums; text-align: right; }
+.sec { margin-top: 26px; }
+.sec > h3 { margin: 0 0 10px; font: 700 26px/1 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.sec > p.hint { margin: -4px 0 12px; }
+.cols3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-width: 0; }
+.card h4 { margin: 0 0 10px; font: 700 20px/1 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.card h4 i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
+.bars { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; font-size: 13px; }
+.bars .lab { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.bars .lab img { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex: none; }
+.bars .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.bars .track { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: var(--surface2); overflow: hidden; }
+.bars .track i { display: block; height: 100%; border-radius: 99px; background: var(--c, var(--pc)); }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+.split { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--surface2); }
+.split i { display: block; height: 100%; }
+.legend2 { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend2 span { display: inline-flex; align-items: center; gap: 6px; }
+.legend2 i { width: 10px; height: 10px; border-radius: 3px; }
+.heroes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+.hcard { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; overflow: hidden; min-width: 0; }
+.hcard .pic { position: relative; aspect-ratio: 1.3; background: var(--c); }
+.hcard .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hcard .nm { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 5px 4px; font-size: 12px; font-weight: 600; color: #fff; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.72)); }
+.hcard .nums { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; font: 700 17px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.hcard .nums span { padding: 6px 0; border-top: 3px solid var(--pc); }
+.hcard .nums span.zero { color: var(--muted); font-weight: 500; }
+.hcard.none { opacity: 0.55; }
+.tblwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.t th, table.t td { padding: 9px 12px; text-align: left; white-space: nowrap; }
+table.t th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); }
+table.t td { border-top: 1px solid var(--line); }
+table.t tr:first-child td { border-top: 0; }
+table.t td.w { font-weight: 700; }
+table.t td.w i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--pc); margin-right: 6px; }
+.chips2 { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+.sync { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync[data-state="live"] .dot { background: var(--good); }
+.sync[data-state="error"] .dot { background: var(--danger); }
+.back-link { display: inline-block; margin-bottom: 10px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.back-link:hover { color: var(--fg); }
+html { background: var(--bg); }
+body { margin: 0; min-height: 100vh; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.tabs { overflow-x: auto; flex-wrap: nowrap; }
+.tab { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap" lang="en">
+  <a class="back-link" href="../">&larr; All game modes</a>
+  <header class="top">
+    <div class="brand">
+      <h1>All-time stats</h1>
+      <p>Every finished game for Lukas, Philipp and Daniel, in one place.</p>
+    </div>
+    <div class="tools"><span class="sync" id="sync" data-state="connecting" role="status"><span class="dot"></span><span id="syncText">Connecting…</span></span><button class="icon-btn" id="refresh" type="button">Refresh</button><button class="icon-btn theme-btn" type="button"></button></div>
+  </header>
+  <p class="stats-note" id="demoNote" hidden>This is a preview with made-up sample data. The live page shows your real results.</p>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Stats by mode"></div>
+  <main id="view"></main>
+  <p class="page-foot">Results are saved when a Hunt or Bingo winner is confirmed, and when a Ladder or Wheel is reset. A hunt or round that is still running is not counted yet.</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../assets/heroes.js"></script>
+<script>
+(function () {
+  'use strict';
+  var PL = [{ id: 'lukas', name: 'Lukas' }, { id: 'philipp', name: 'Philipp' }, { id: 'daniel', name: 'Daniel' }];
+  var D = window.HERO_DATA, HEROES = D.heroes, IMG = D.images, BY = {};
+  HEROES.forEach(function (h) { BY[h.id] = h; });
+  var CLS = { tank: 'Tank', damage: 'Damage', support: 'Support' };
+  var N = HEROES.length, LADDER_TOTAL = N;
+  var THEME_KEY = 'mystery-hub-theme', TAB_KEY = 'hero-stats-tab';
+  var SUN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>';
+  var MOON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pname(id) { return PL.filter(function (p) { return p.id === id; })[0].name; }
+  function pc(id) { return 'var(--p-' + id + ')'; }
+  function pct(a, b) { return b ? Math.round(a / b * 100) + '%' : '–'; }
+  function avg(a, b, d) { return b ? (a / b).toFixed(d === undefined ? 1 : d) : '–'; }
+  function fdate(s) { try { return new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } }
+  function hname(id) { return BY[id] ? BY[id].name : id; }
+
+  /* ---------- Theme ---------- */
+  function isDark() { var t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
+  function paintTheme() { var b = document.querySelector('.theme-btn'); b.innerHTML = (isDark() ? SUN : MOON) + '<span>' + (isDark() ? 'Light mode' : 'Dark mode') + '</span>'; }
+  try { var t0 = localStorage.getItem(THEME_KEY); if (t0 === 'dark' || t0 === 'light') document.documentElement.setAttribute('data-theme', t0); } catch (e) { /* ignore */ }
+  document.querySelector('.theme-btn').addEventListener('click', function () {
+    var t = isDark() ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* ignore */ }
+    paintTheme();
+  });
+
+  /* ---------- Data ---------- */
+  var rows = [], live = { ultimates: [], ladder: [], wheel: [] };
+  function byMode(m) { return rows.filter(function (r) { return r.mode === m; }); }
+  function zeroMap() { var o = {}; PL.forEach(function (p) { o[p.id] = 0; }); return o; }
+
+  function huntStats() {
+    var out = { runs: byMode('hunt'), per: {}, heroTotals: {} };
+    PL.forEach(function (p) { out.per[p.id] = { runs: 0, won: 0, lost: 0, draw: 0, complete: 0, total: 0, done: 0, best: 0, heroes: {}, cls: { tank: 0, damage: 0, support: 0 } }; });
+    out.runs.forEach(function (r) {
+      var pl = (r.data && r.data.players) || {};
+      PL.forEach(function (p) {
+        var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
+        s.runs++; s.total += x.total || 0; s.done += x.done || 0; s.best = Math.max(s.best, x.total || 0);
+        if (r.winner === p.id) { s.won++; if (r.data.how === 'complete') s.complete++; } else if (r.winner === 'tie') s.draw++; else if (r.winner) s.lost++;
+        Object.keys(x.heroes || {}).forEach(function (h) { var c = x.heroes[h] || 0; s.heroes[h] = (s.heroes[h] || 0) + c; if (BY[h]) s.cls[BY[h].cls] += c; });
+      });
+    });
+    return out;
+  }
+  function bingoStats() {
+    var out = { runs: byMode('bingo'), per: {}, shared: { n: 0, done: 0, bingos: 0 } };
+    PL.forEach(function (p) { out.per[p.id] = { runs: 0, won: 0, lost: 0, draw: 0, done: 0, bingos: 0, best: 0, ticks: {} }; });
+    out.runs.forEach(function (r) {
+      var pl = (r.data && r.data.players) || {};
+      PL.forEach(function (p) {
+        var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
+        s.runs++; s.done += x.done || 0; s.bingos += x.bingos || 0; s.best = Math.max(s.best, x.done || 0);
+        if (r.winner === p.id) s.won++; else if (r.winner === 'tie') s.draw++; else if (r.winner) s.lost++;
+        (x.ticked || []).forEach(function (t) { s.ticks[t] = (s.ticks[t] || 0) + 1; });
+      });
+      var sh = r.data && r.data.shared; if (sh) { out.shared.n++; out.shared.done += sh.done || 0; out.shared.bingos += sh.bingos || 0; }
+    });
+    return out;
+  }
+  function ladderStats() {
+    var out = { runs: byMode('ladder'), per: {} };
+    PL.forEach(function (p) { out.per[p.id] = { runs: 0, w: 0, l: 0, best: 0, posSum: 0, complete: 0 }; });
+    out.runs.forEach(function (r) {
+      var d = r.data || {}, s = out.per[d.player]; if (!s) return;
+      s.runs++; s.w += d.w || 0; s.l += d.l || 0; s.best = Math.max(s.best, d.pos || 0); s.posSum += d.pos || 0; if ((d.pos || 0) >= (d.total || LADDER_TOTAL)) s.complete++;
+    });
+    return out;
+  }
+  function wheelStats() {
+    var out = { runs: byMode('wheel'), per: {} };
+    PL.forEach(function (p) { out.per[p.id] = { runs: 0, wins: 0, best: 0, heroes: {}, cls: { tank: 0, damage: 0, support: 0 } }; });
+    out.runs.forEach(function (r) {
+      var pl = (r.data && r.data.players) || {};
+      PL.forEach(function (p) {
+        var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
+        s.runs++; s.wins += x.wins || 0; s.best = Math.max(s.best, x.wins || 0);
+        (x.heroes || []).forEach(function (h) { s.heroes[h] = (s.heroes[h] || 0) + 1; if (BY[h]) s.cls[BY[h].cls]++; });
+      });
+    });
+    return out;
+  }
+
+  /* ---------- Helpers for rendering ---------- */
+  function topList(map, n, opts) {
+    opts = opts || {};
+    var arr = Object.keys(map).filter(function (k) { return map[k] > 0; }).sort(function (a, b) { return map[b] - map[a] || (hname(a) > hname(b) ? 1 : -1); }).slice(0, n);
+    return arr;
+  }
+  function barList(keys, map, color, hero) {
+    if (!keys.length) return '<p class="empty">Nothing yet.</p>';
+    var max = Math.max.apply(null, keys.map(function (k) { return map[k]; })) || 1;
+    return '<ul class="bars">' + keys.map(function (k) {
+      var h = hero && BY[k];
+      var im = h && IMG[k] ? '<img src="' + IMG[k] + '" alt="">' : '';
+      return '<li><span class="lab">' + im + '<span>' + esc(h ? h.name : k) + '</span></span><span class="val">' + map[k] + '</span><span class="track"><i style="width:' + (map[k] / max * 100) + '%;--c:' + color + '"></i></span></li>';
+    }).join('') + '</ul>';
+  }
+  function classSplit(cls) {
+    var tot = cls.tank + cls.damage + cls.support;
+    if (!tot) return '<p class="empty">Nothing yet.</p>';
+    var cols = { tank: 'var(--tank)', damage: 'var(--damage)', support: 'var(--support)' };
+    return '<div class="split" role="img" aria-label="Tank ' + cls.tank + ', Damage ' + cls.damage + ', Support ' + cls.support + '">' +
+      ['tank', 'damage', 'support'].map(function (k) { return '<i style="width:' + (cls[k] / tot * 100) + '%;background:' + cols[k] + '"></i>'; }).join('') + '</div>' +
+      '<div class="legend2">' + ['tank', 'damage', 'support'].map(function (k) { return '<span><i style="background:' + cols[k] + '"></i>' + CLS[k] + ' ' + pct(cls[k], tot) + '</span>'; }).join('') + '</div>';
+  }
+  function kv(list) { return '<ul class="kv">' + list.map(function (x) { return '<li><span>' + x[0] + '</span><b>' + x[1] + '</b></li>'; }).join('') + '</ul>'; }
+  function pcol(p, big, bigLabel, list) {
+    return '<article class="pcol" style="--pc:' + pc(p) + '"><h2>' + pname(p) + '</h2><div class="big">' + big + '<small>' + bigLabel + '</small></div>' + kv(list) + '</article>';
+  }
+  function playerCards(title, hint, fn) {
+    return '<section class="sec"><h3>' + title + '</h3>' + (hint ? '<p class="hint">' + hint + '</p>' : '') + '<div class="cols3">' + PL.map(function (p) { return '<div class="card" style="--pc:' + pc(p.id) + '"><h4><i></i>' + p.name + '</h4>' + fn(p.id) + '</div>'; }).join('') + '</div></section>';
+  }
+  function emptyAll(text) { return '<p class="stats-note">' + text + '</p>'; }
+  function winnerCell(w) { return w === 'tie' ? 'Draw' : (w ? '<i></i>' + pname(w) : '–'); }
+
+  /* ---------- Views ---------- */
+  function viewOverview() {
+    var h = huntStats(), b = bingoStats(), l = ladderStats(), w = wheelStats();
+    var vs = {}; PL.forEach(function (p) { vs[p.id] = h.per[p.id].won + b.per[p.id].won; });
+    var played = h.runs.length + b.runs.length;
+    var html = '';
+    if (!rows.length) html += emptyAll('No finished games yet. Results are saved when a Hunt or Bingo winner is confirmed, and when a Ladder or Wheel is reset.');
+    html += '<div class="vs-strip">' + PL.map(function (p) {
+      var liveWheel = live.wheel.filter(function (r) { return r.player === p.id; }).length;
+      return pcol(p.id, vs[p.id], 'versus wins', [
+        ['Ultimate Hunts won', h.per[p.id].won + ' of ' + h.runs.length],
+        ['Bingo rounds won', b.per[p.id].won + ' of ' + b.runs.length],
+        ['Versus win rate', pct(vs[p.id], played)],
+        ['Ladder: best rung', l.per[p.id].best ? l.per[p.id].best + ' / ' + LADDER_TOTAL : '–'],
+        ['Wheel: matches won', w.per[p.id].wins + liveWheel]
+      ]);
+    }).join('') + '</div>';
+    html += '<section class="sec"><h3>Latest results</h3>' + recentTable(rows.filter(function (r) { return r.mode === 'hunt' || r.mode === 'bingo'; }).slice(0, 8)) + '</section>';
+    return html;
+  }
+  function recentTable(list) {
+    if (!list.length) return '<p class="empty">No finished versus games yet.</p>';
+    return '<div class="tblwrap"><table class="t"><thead><tr><th>Date</th><th>Mode</th><th>Winner</th>' + PL.map(function (p) { return '<th>' + p.name + '</th>'; }).join('') + '</tr></thead><tbody>' + list.map(function (r) {
+      var pl = (r.data && r.data.players) || {};
+      return '<tr><td>' + fdate(r.finished_at) + '</td><td>' + (r.mode === 'hunt' ? 'Ultimate Hunt' : 'Bingo') + '</td><td class="w"' + (r.winner && r.winner !== 'tie' ? ' style="--pc:' + pc(r.winner) + '"' : '') + '>' + winnerCell(r.winner) + '</td>' +
+        PL.map(function (p) { var x = pl[p.id]; if (!x) return '<td>–</td>'; return '<td>' + (r.mode === 'hunt' ? (x.total + ' ults · ' + x.done + '/' + N) : (x.done + '/25 · ' + (x.bingos || 0) + ' bingo' + (x.bingos === 1 ? '' : 's'))) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+  }
+  function viewHunt() {
+    var h = huntStats(), html = '';
+    if (!h.runs.length) html += emptyAll('No saved hunts yet. When someone wins, press "Save result" on the Ultimate Hunt page and the hunt shows up here.');
+    html += '<div class="vs-strip">' + PL.map(function (p) {
+      var s = h.per[p.id];
+      return pcol(p.id, s.won, 'hunts won', [
+        ['Hunts played', s.runs], ['Won / lost / draw', s.won + ' / ' + s.lost + ' / ' + s.draw], ['Win rate', pct(s.won, s.runs)],
+        ['Full 54-hero finishes', s.complete], ['Total ultimates', s.total],
+        ['Average ultimates per hunt', avg(s.total, s.runs)], ['Average heroes done at the end', s.runs ? avg(s.done, s.runs) + ' / ' + N : '–'], ['Best hunt (ultimates)', s.best || '–']
+      ]);
+    }).join('') + '</div>';
+    html += playerCards('Favourite heroes', 'Most ultimates over all saved hunts.', function (p) { var m = h.per[p].heroes; return barList(topList(m, 6), m, pc(p), true); });
+    html += playerCards('Role split', 'Share of ultimates by role.', function (p) { return classSplit(h.per[p].cls); });
+    // all-heroes grid
+    var all = HEROES.slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'en'); });
+    var f = state.hclass;
+    html += '<section class="sec"><h3>Ultimates per hero</h3><p class="hint">All-time totals. Left to right: ' + PL.map(function (p) { return pname(p.id); }).join(', ') + '.</p>' +
+      '<div class="chips2" id="hfilter">' + [['all', 'All'], ['tank', 'Tank'], ['damage', 'Damage'], ['support', 'Support'], ['none', 'Never done']].map(function (c) { return '<button type="button" class="pill" data-f="' + c[0] + '" aria-pressed="' + (f === c[0]) + '" style="--pc:var(--accent-fill)">' + c[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="heroes" style="margin-top:12px">' + all.filter(function (x) {
+        var tot = PL.reduce(function (s, p) { return s + (h.per[p.id].heroes[x.id] || 0); }, 0);
+        return f === 'all' || (f === 'none' ? tot === 0 : x.cls === f);
+      }).map(function (x) {
+        var tot = PL.reduce(function (s, p) { return s + (h.per[p.id].heroes[x.id] || 0); }, 0);
+        return '<div class="hcard' + (tot ? '' : ' none') + '"><div class="pic" style="--c:var(--' + x.cls + ')">' + (IMG[x.id] ? '<img src="' + IMG[x.id] + '" alt="">' : '') + '<div class="nm">' + esc(x.name) + '</div></div><div class="nums">' +
+          PL.map(function (p) { var c = h.per[p.id].heroes[x.id] || 0; return '<span class="' + (c ? '' : 'zero') + '" style="--pc:' + pc(p.id) + '" title="' + pname(p.id) + '">' + c + '</span>'; }).join('') + '</div></div>';
+      }).join('') + '</div></section>';
+    html += '<section class="sec"><h3>Saved hunts</h3>' + recentTable(h.runs.slice(0, 15)) + '</section>';
+    if (live.ultimates.length) {
+      var cur = zeroMap(), curH = zeroMap(); live.ultimates.forEach(function (r) { if (cur[r.player] !== undefined && r.count > 0) { cur[r.player] += r.count; curH[r.player]++; } });
+      html += '<p class="hint" style="margin-top:14px">Current hunt, not saved yet: ' + PL.map(function (p) { return pname(p.id) + ' ' + cur[p.id] + ' ultimates (' + curH[p.id] + '/' + N + ' heroes)'; }).join(' · ') + '.</p>';
+    }
+    return html;
+  }
+  function viewBingo() {
+    var b = bingoStats(), html = '';
+    if (!b.runs.length) html += emptyAll('No saved bingo rounds yet. When someone gets the first bingo, press "Save result" on the Hero Bingo page.');
+    html += '<div class="vs-strip">' + PL.map(function (p) {
+      var s = b.per[p.id];
+      return pcol(p.id, s.won, 'rounds won', [
+        ['Rounds played', s.runs], ['Won / lost / draw', s.won + ' / ' + s.lost + ' / ' + s.draw], ['Win rate', pct(s.won, s.runs)],
+        ['Average squares ticked', s.runs ? avg(s.done, s.runs) + ' / 25' : '–'], ['Average bingos', avg(s.bingos, s.runs)], ['Most squares in a round', s.best || '–']
+      ]);
+    }).join('') + '</div>';
+    html += playerCards('Most ticked challenges', 'How often a challenge was ticked on this player\'s own card at the end of a round.', function (p) { var m = b.per[p].ticks; return barList(topList(m, 6), m, pc(p), false); });
+    if (b.shared.n) html += '<section class="sec"><h3>Shared card</h3><p class="hint">Average over ' + b.shared.n + ' saved rounds: ' + avg(b.shared.done, b.shared.n) + ' of 25 squares and ' + avg(b.shared.bingos, b.shared.n) + ' bingos.</p></section>';
+    html += '<section class="sec"><h3>Saved rounds</h3>' + recentTable(b.runs.slice(0, 15)) + '</section>';
+    return html;
+  }
+  function viewLadder() {
+    var l = ladderStats(), html = '';
+    if (!l.runs.length) html += emptyAll('No archived ladders yet. A ladder is archived when it is started over.');
+    html += '<div class="vs-strip">' + PL.map(function (p) {
+      var s = l.per[p.id];
+      return pcol(p.id, s.best || 0, '/ ' + LADDER_TOTAL + ' best rung', [
+        ['Ladders archived', s.runs], ['Wins / losses', s.w + ' / ' + s.l], ['Win rate', pct(s.w, s.w + s.l)],
+        ['Average rung reached', avg(s.posSum, s.runs)], ['Ladders completed', s.complete], ['Matches per ladder', avg(s.w + s.l, s.runs, 0)]
+      ]);
+    }).join('') + '</div>';
+    html += '<section class="sec"><h3>Current ladders</h3>' + (live.ladder.length ? '<div class="cols3">' + PL.map(function (p) {
+      var r = live.ladder.filter(function (x) { return x.player === p.id; })[0]; if (!r) return '';
+      var cur = BY[r.hero_order[r.pos]];
+      return '<div class="card" style="--pc:' + pc(p.id) + '"><h4><i></i>' + p.name + '</h4>' + kv([['Rung', r.pos + ' / ' + LADDER_TOTAL], ['Wins / losses', r.w + ' / ' + r.l], ['Current hero', cur ? esc(cur.name) : 'Done']]) + '</div>';
+    }).join('') + '</div>' : '<p class="empty">Not available.</p>') + '</section>';
+    html += '<section class="sec"><h3>Archived ladders</h3>' + (l.runs.length ? '<div class="tblwrap"><table class="t"><thead><tr><th>Date</th><th>Player</th><th>Rung</th><th>Wins</th><th>Losses</th><th>Loss drops</th></tr></thead><tbody>' + l.runs.slice(0, 15).map(function (r) {
+      var d = r.data || {}; return '<tr><td>' + fdate(r.finished_at) + '</td><td class="w" style="--pc:' + pc(d.player) + '"><i></i>' + pname(d.player) + '</td><td>' + d.pos + ' / ' + (d.total || LADDER_TOTAL) + '</td><td>' + d.w + '</td><td>' + d.l + '</td><td>' + (d.drop ? 'on' : 'off') + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<p class="empty">Nothing yet.</p>') + '</section>';
+    return html;
+  }
+  function viewWheel() {
+    var w = wheelStats(), html = '';
+    var liveBy = {}; PL.forEach(function (p) { liveBy[p.id] = {}; }); live.wheel.forEach(function (r) { if (liveBy[r.player]) liveBy[r.player][r.hero] = 1; });
+    if (!w.runs.length) html += emptyAll('No archived wheels yet. A wheel is archived when it is reset. Matches won on the current wheels are shown below.');
+    html += '<div class="vs-strip">' + PL.map(function (p) {
+      var s = w.per[p.id], cur = Object.keys(liveBy[p.id]).length;
+      return pcol(p.id, s.wins + cur, 'matches won', [
+        ['Wheels archived', s.runs], ['On the current wheel', cur + ' / ' + N], ['Average wins per archived wheel', avg(s.wins, s.runs, 0)], ['Best wheel', s.best || '–']
+      ]);
+    }).join('') + '</div>';
+    html += playerCards('Most won heroes', 'Archived wheels plus the current wheel.', function (p) {
+      var m = {}; Object.keys(w.per[p].heroes).forEach(function (k) { m[k] = w.per[p].heroes[k]; }); Object.keys(liveBy[p]).forEach(function (k) { m[k] = (m[k] || 0) + 1; });
+      return barList(topList(m, 6), m, pc(p), true);
+    });
+    html += playerCards('Role split', 'Share of matches won by role.', function (p) {
+      var c = { tank: w.per[p].cls.tank, damage: w.per[p].cls.damage, support: w.per[p].cls.support };
+      Object.keys(liveBy[p]).forEach(function (k) { if (BY[k]) c[BY[k].cls]++; });
+      return classSplit(c);
+    });
+    return html;
+  }
+
+  /* ---------- Shell ---------- */
+  var VIEWS = [['overview', 'Overview', viewOverview], ['hunt', 'Ultimate Hunt', viewHunt], ['bingo', 'Hero Bingo', viewBingo], ['ladder', 'Hero Ladder', viewLadder], ['wheel', 'Mystery Wheel', viewWheel]];
+  var state = { tab: 'overview', hclass: 'all' };
+  try { var t1 = localStorage.getItem(TAB_KEY); if (VIEWS.some(function (v) { return v[0] === t1; })) state.tab = t1; } catch (e) { /* ignore */ }
+  function render() {
+    $('tabs').innerHTML = VIEWS.map(function (v) { return '<button class="tab" type="button" role="tab" data-tab="' + v[0] + '" aria-selected="' + (state.tab === v[0]) + '">' + v[1] + '</button>'; }).join('');
+    var v = VIEWS.filter(function (x) { return x[0] === state.tab; })[0];
+    $('view').innerHTML = v[2]();
+  }
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; try { localStorage.setItem(TAB_KEY, state.tab); } catch (x) { /* ignore */ } render(); });
+  $('view').addEventListener('click', function (e) { var b = e.target.closest('#hfilter [data-f]'); if (!b) return; state.hclass = b.dataset.f; render(); });
+  function setSync(m, text) { $('sync').setAttribute('data-state', m); $('syncText').textContent = text; }
+
+  /* ---------- Loading ---------- */
+  var demo = window.STATS_DEMO;
+  if (demo) {
+    rows = demo.rows.slice().sort(function (a, b) { return a.finished_at < b.finished_at ? 1 : -1; }); live = demo.live;
+    setSync('live', 'Sample data'); $('demoNote').hidden = false; paintTheme(); render(); return;
+  }
+  var SUPABASE_URL = 'https://dwsieddjvldzurosjdpp.supabase.co', SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
+  var sb = null, loaded = false;
+  function load() {
+    return Promise.all([
+      sb.from('game_results').select('id,mode,finished_at,winner,data').order('finished_at', { ascending: false }).limit(2000),
+      sb.from('ultimates').select('player,hero,count'),
+      sb.from('ladder_players').select('player,hero_order,pos,w,l'),
+      sb.from('wheel_removed').select('player,hero')
+    ]).then(function (r) {
+      if (r[0].error) { setSync('error', loaded ? 'Connection problem' : 'Not connected'); return; }
+      rows = r[0].data || []; live = { ultimates: r[1].data || [], ladder: r[2].data || [], wheel: r[3].data || [] };
+      loaded = true; setSync('live', 'Live from the shared database'); render();
+    }, function () { setSync('error', loaded ? 'Connection problem' : 'Not connected'); });
+  }
+  paintTheme(); render();
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') { setSync('error', 'Not connected'); return; }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  load(); setInterval(load, 30000);
+  $('refresh').addEventListener('click', load);
+})();
+</script>
+</body>
+</html>

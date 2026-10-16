@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try{var t=localStorage.getItem('mystery-hub-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<title>Mystery Wheel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../assets/style.css">
+<style>:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }</style>
+</head>
+<body>
+<div class="wrap">
+  <section id="wheelPage">
+    <a class="back" id="backBtn" href="../">&larr; All game modes</a>
+    <header class="top">
+      <div class="brand">
+        <h1>Mystery Wheel</h1>
+        <p>Win one match with every hero. A lost match keeps the hero on the wheel.</p>
+      </div>
+      <div class="tools"><span class="sync" id="sync" data-state="connecting" role="status"><span class="dot"></span><span id="syncText">Connecting…</span></span><button class="icon-btn theme-btn" type="button"></button></div>
+    </header>
+
+    <section class="done" id="done" hidden>
+      <div class="done-tag">Challenge complete</div>
+      <h2>Congratulations!</h2>
+      <p>Lukas, Philipp and Daniel have each won a match with all 54 heroes. That is 162 wins in total.</p>
+      <div class="done-names"><span>Lukas</span><span>Philipp</span><span>Daniel</span></div>
+      <button class="btn primary" id="resetAllBtn" type="button">Reset all wheels</button>
+    </section>
+
+    <div class="rules" id="rulesBox">
+      <div class="rule">
+        <label class="chk"><input type="checkbox" id="optLimits"> Role queue limits</label>
+        <small>Among the wheels that spin: at most 1 Tank, 2 Damage and 2 Support. Nobody is favored for a role.</small>
+      </div>
+      <div class="rule">
+        <label class="chk"><input type="checkbox" id="optBalance"> Balance roles</label>
+        <small>Slightly favors rounds that use up the role with the most heroes left, so late rounds stay playable.</small>
+      </div>
+      <div class="rules-foot">
+        <button class="btn" id="checkBtn" type="button">Check endgame outlook</button>
+        <span class="out" id="checkOut" role="status"></span>
+      </div>
+    </div>
+
+    <div class="bar" id="actionBar">
+      <button class="btn primary" id="spinBtn" type="button">Spin</button>
+      <button class="btn good" id="winBtn" type="button">We won: remove heroes</button>
+      <div class="status" id="status" role="status"></div>
+      <button class="linkish" id="discardBtn" type="button">Discard result</button>
+    </div>
+    <div class="notice" id="blocked" hidden>
+      <div id="blockedText"></div>
+      <div class="row">
+        <button class="btn" id="relaxBtn" type="button">Spin without role limits this round</button>
+        <button class="btn" id="blockedClose" type="button">Close</button>
+      </div>
+    </div>
+
+    <main class="wheels" id="wheels"></main>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgText">
+    <h2 id="dlgTitle"></h2>
+    <p id="dlgText"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="dlgCancel" type="button">Keep them</button>
+      <button class="btn danger" id="dlgOk" type="button"></button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../assets/wheel-core.js"></script>
+<script src="../assets/heroes.js"></script>
+<script src="../assets/wheel.js"></script>
+</body>
+</html>
