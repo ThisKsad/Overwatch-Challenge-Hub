@@ -438,6 +438,7 @@ img { max-width: 100%; }
     remote = clone(snapshot()); loaded = true; setMode('live');
     fix.forEach(function (id) { var c = clone(id === 'shared' ? state.shared.cells : state.own[id].cells); enqueue(function () { return sb.from('bingo_cards').upsert({ card: id, cells: c }, { onConflict: 'card' }); }); });
     if (changed) render();
+    checkRelease();
   }
   function loadAll() {
     if (!sb) return Promise.resolve();
@@ -612,6 +613,14 @@ img { max-width: 100%; }
       return '<span class="' + (p.id === w ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + '/' + SIZE + ' &middot; ' + bingoWord(s.bingos) + '</span>';
     }).join('');
   }
+  /* Misclick protection: if the winner's own card no longer holds a bingo, release the claim. */
+  function checkRelease() {
+    var w = state.round.winner;
+    if (!w || w === 'tie' || state.round.how !== 'bingo' || !state.own[w]) return;
+    if (bingoInfo(doneOwn(state.own[w])).n > 0) return;
+    state.round = { winner: null, how: null }; dismissed = null; renderWinner();
+    enqueue(function () { return sb.rpc('round_release', { p_mode: 'bingo', p_winner: w }); });
+  }
   function claimWin(pid) {
     state.round = { winner: pid, how: 'bingo' }; dismissed = null; renderWinner();
     enqueue(function () { return sb.rpc('round_claim', { p_mode: 'bingo', p_winner: pid, p_how: 'bingo' }); });
@@ -676,6 +685,7 @@ img { max-width: 100%; }
     var before = bingoInfo(doneOwn(card)).n;
     cell.d = !cell.d; save(); render();
     var after = bingoInfo(doneOwn(card)).n;
+    if (after < before) checkRelease();
     if (after > before) {
       if (!state.round.winner) claimWin(state.ownSel); else toast('Bingo for ' + pname(state.ownSel) + '! ' + bingoWord(after) + ' now.');
     }

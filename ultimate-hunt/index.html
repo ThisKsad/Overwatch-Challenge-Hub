@@ -273,6 +273,12 @@ button { font-family: inherit; }
 .winner .btn.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: #1a1203; font-size: 16px; padding: 11px 22px; }
 .winner .btn:disabled { opacity: 0.5; cursor: default; }
 .winner .linkish { background: none; border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; font-family: inherit; }
+.rankmode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 18px; }
+.rm-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.rm-btn { border: 1px solid var(--line, rgba(128,128,128,.35)); background: transparent; color: var(--muted); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.rm-btn[aria-pressed="true"] { background: var(--accent, #f99e1a); color: #111; border-color: transparent; font-weight: 600; }
+.rm-note { font-size: 12px; color: var(--muted); flex-basis: 100%; }
+.rankmode + .board { margin-top: 10px; }
 </style>
 
 <script>try{var t=localStorage.getItem('mystery-hub-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
@@ -302,6 +308,12 @@ button { font-family: inherit; }
     </div>
   </section>
 
+  <div class="rankmode" role="group" aria-label="Ranking">
+    <span class="rm-label">Rank by</span>
+    <button type="button" class="rm-btn" id="rmHeroes" data-mode="heroes" aria-pressed="true">Heroes done</button>
+    <button type="button" class="rm-btn" id="rmUlts" data-mode="ults" aria-pressed="false">Total ultimates</button>
+    <span class="rm-note" id="rmNote"></span>
+  </div>
   <ol class="board" id="board" aria-label="Leaderboard"></ol>
 
   <div class="tabs" id="tabs" role="tablist" aria-label="Players"></div>
@@ -437,6 +449,9 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
     chain[p.id] = Promise.resolve(); scheduled[p.id] = false; retries[p.id] = 0; onlyMissing[p.id] = false;
   });
   var round = { winner: null, how: null }, dismissedWin = null;
+  var rankMode = 'heroes';
+  try { if (localStorage.getItem('ultimate-hunt-rank') === 'ults') rankMode = 'ults'; } catch (e) {}
+  function cmpRank(a, b) { return rankMode === 'ults' ? (b.total - a.total || b.done - a.done) : (b.done - a.done || b.total - a.total); }
   var canWrite = false, seen = 0, mode = 'connecting', activePlayer = PLAYERS[0].id;
 
   function nameOf(pid) { return PLAYERS.filter(function (p) { return p.id === pid; })[0].name; }
@@ -586,7 +601,9 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
     var rows = PLAYERS.map(function (p) {
       return { id: p.id, total: totalOf(p.id), done: doneOf(p.id) };
     });
-    var sorted = rows.slice().sort(function (a, b) { return b.total - a.total || b.done - a.done; });
+    var sorted = rows.slice().sort(cmpRank);
+    ['heroes', 'ults'].forEach(function (m) { $('[data-mode="' + m + '"]').setAttribute('aria-pressed', m === rankMode ? 'true' : 'false'); });
+    $('#rmNote').textContent = rankMode === 'ults' ? 'Most ultimates wins; heroes done breaks ties.' : 'Most heroes done wins; total ultimates break ties.';
     sorted.forEach(function (r, i) {
       var rank = (i > 0 && sorted[i - 1].total === r.total && sorted[i - 1].done === r.done) ? sorted[i - 1].rank : i + 1;
       r.rank = rank;
@@ -602,6 +619,13 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
     });
   }
 
+  Array.prototype.forEach.call(document.querySelectorAll('.rm-btn'), function (b) {
+    b.addEventListener('click', function () {
+      rankMode = b.dataset.mode;
+      try { localStorage.setItem('ultimate-hunt-rank', rankMode); } catch (e) {}
+      renderAll();
+    });
+  });
   function renderAll() {
     PLAYERS.forEach(function (p) { refreshPlayer(p.id); });
     renderBoard();
@@ -611,7 +635,7 @@ var SUPABASE_KEY = 'sb_publishable_SREC_XokfKppXeP7rTgnMQ_-2ZyEXMp';
   /* ---------- Hunt winner ---------- */
   function standings() {
     return PLAYERS.map(function (p) { return { id: p.id, done: doneOf(p.id), total: totalOf(p.id) }; })
-      .sort(function (a, b) { return b.done - a.done || b.total - a.total; });
+      .sort(cmpRank);
   }
   function renderWinner() {
     var w = round.winner, box = $('#winner');
