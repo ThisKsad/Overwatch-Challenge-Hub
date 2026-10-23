@@ -86,6 +86,8 @@ button { font-family: inherit; }
 .chk { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; min-height: 32px; }
 .chk input { width: 18px; height: 18px; accent-color: var(--accent-fill); flex: none; }
 .chk input:disabled { cursor: default; }
+.num { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 32px; }
+.num input { width: 64px; padding: 5px 8px; font: inherit; font-variant-numeric: tabular-nums; color: var(--fg); background: var(--surface2); border: 1px solid var(--line); border-radius: 6px; }
 .done { margin-top: 22px; padding: 30px 20px; text-align: center; background: var(--surface); border: 1px solid var(--accent-fill); border-radius: 12px; display: grid; justify-items: center; gap: 12px; }
 .done h2 { margin: 0; font: 700 clamp(44px, 12vw, 76px)/0.95 var(--f-display); letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); text-wrap: balance; }
 .done p { margin: 0; max-width: 46ch; color: var(--muted); }
@@ -133,6 +135,8 @@ button { font-family: inherit; }
 .legend i.k-done { background: var(--good); border-color: var(--good); color: #fff; }
 .legend i.k-done svg { width: 11px; height: 11px; }
 .legend i.k-now { background: #fff; border: 2px solid #121826; }
+.legend i.k-cp { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+.legend i.k-cp svg { width: 10px; height: 10px; }
 
 .grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; margin-top: 14px; padding: 6px; }
 .tile { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: linear-gradient(155deg, color-mix(in srgb, var(--c) 88%, #fff), color-mix(in srgb, var(--c) 58%, #000)); }
@@ -143,6 +147,12 @@ button { font-family: inherit; }
 .tile .ok svg { width: 12px; height: 12px; }
 .tile.done img { filter: saturate(0.25); opacity: 0.55; }
 .tile.done .ok { display: grid; }
+.tile .cp { position: absolute; bottom: 20px; right: 4px; z-index: 1; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-fill); color: var(--on-accent); display: none; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.tile .cp svg { width: 11px; height: 11px; }
+.tile.ckpt { box-shadow: inset 0 0 0 3px var(--accent-fill); }
+.tile.ckpt .cp { display: grid; }
+.cpline { font-size: 13px; color: var(--muted); margin-top: -4px; }
+.cpline b { color: var(--accent); font-weight: 600; }
 .tile.pop .ok { animation: pop 0.5s cubic-bezier(.3,1.6,.5,1); }
 @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 
@@ -182,6 +192,8 @@ img { max-width: 100%; }
   <div class="rules">
     <label class="chk"><input type="checkbox" id="optDrop"> A loss drops you one rung</label>
     <small id="dropHint"></small>
+    <label class="num">Checkpoint every <input type="number" id="optCp" min="0" max="53" step="1" inputmode="numeric"> heroes</label>
+    <small id="cpHint"></small>
     <label class="chk"><input type="checkbox" id="optRoles"> Team-friendly roles</label>
     <small id="rolesHint"></small>
   </div>
@@ -208,6 +220,7 @@ img { max-width: 100%; }
     <div class="legend" aria-hidden="true">
       <span><i class="k-done"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg></i>Cleared</span>
       <span><i class="k-now"></i>Current hero</span>
+      <span id="cpLegend"><i class="k-cp"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 1.5h1.6v13H3z"/><path d="M4.6 2h8.4l-2.2 3.2L13 8.4H4.6z"/></svg></i>Checkpoint</span>
       <span><i></i>Still to climb</span>
     </div>
     <div class="grid" id="grid"><div class="frame still" id="frame" hidden></div></div>
@@ -242,6 +255,7 @@ img { max-width: 100%; }
   var THEME_KEY = 'mystery-hub-theme';
   var CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>';
   var SUN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>';
+  var FLAG = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 1.5h1.6v13H3z"/><path d="M4.6 2h8.4l-2.2 3.2L13 8.4H4.6z"/></svg>';
   var MOON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>';
 
   function $(id) { return document.getElementById(id); }
@@ -284,7 +298,11 @@ img { max-width: 100%; }
     $('syncText').textContent = MODE_TEXT[m];
   }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
-  var state = { sel: 'lukas', drop: true, roles: false, players: {} };
+  var state = { sel: 'lukas', drop: true, roles: false, cp: 0, players: {} };
+  // Checkpoint every n heroes (0 = off): once a player has cleared a multiple of n heroes, a loss no longer drops them below it.
+  function cpOf(v) { v = Number(v); return Number.isInteger(v) && v > 0 && v < TOTAL ? v : 0; }
+  function isCheckpoint(pos) { return state.cp > 0 && pos > 0 && pos % state.cp === 0; }
+  function lastCheckpoint(pos) { return state.cp > 0 ? Math.floor(pos / state.cp) * state.cp : 0; }
   try { var s0 = localStorage.getItem(SEL_KEY); if (PLAYERS.some(function (p) { return p.id === s0; })) state.sel = s0; } catch (e) { /* ignore */ }
   function enqueue(fn) {
     writing++; setMode('saving');
@@ -298,8 +316,9 @@ img { max-width: 100%; }
   function save() {
     try { localStorage.setItem(SEL_KEY, state.sel); } catch (e) { /* ignore */ }
     if (!sb || !remote) return;
-    var prev = remote; remote = clone({ drop: state.drop, roles: state.roles, players: state.players });
+    var prev = remote; remote = clone({ drop: state.drop, roles: state.roles, cp: state.cp, players: state.players });
     if (prev.drop !== state.drop || prev.roles !== state.roles) { var dv = state.drop, rv = state.roles; enqueue(function () { return sb.from('ladder_settings').update({ drop_on_loss: dv, role_limits: rv }).eq('id', 1); }); }
+    if (prev.cp !== state.cp) { var cv = state.cp; enqueue(function () { return sb.from('ladder_settings').update({ checkpoint_every: cv }).eq('id', 1); }); }
     PLAYERS.forEach(function (pl) {
       var id = pl.id, p = state.players[id];
       if (JSON.stringify(prev.players[id]) !== JSON.stringify(p)) {
@@ -309,7 +328,7 @@ img { max-width: 100%; }
     });
   }
   function applyRemote(rows, set) {
-    var next = { sel: state.sel, drop: set ? set.drop_on_loss !== false : true, roles: !!(set && set.role_limits), players: {} }, fix = [];
+    var next = { sel: state.sel, drop: set ? set.drop_on_loss !== false : true, roles: !!(set && set.role_limits), cp: cpOf(set && set.checkpoint_every), players: {} }, fix = [];
     PLAYERS.forEach(function (pl) {
       var r = rows.filter(function (x) { return x.player === pl.id; })[0];
       var cand = r ? { order: r.hero_order, pos: r.pos, w: r.w, l: r.l, hist: Array.isArray(r.hist) ? r.hist : [] } : null;
@@ -317,16 +336,16 @@ img { max-width: 100%; }
       else { next.players[pl.id] = validPlayer(state.players[pl.id]) ? state.players[pl.id] : freshPlayer(); fix.push(pl.id); }
     });
     var first = !loaded;
-    var changed = first || JSON.stringify({ d: next.drop, r: next.roles, p: next.players }) !== JSON.stringify({ d: state.drop, r: state.roles, p: state.players });
-    state = next; remote = clone({ drop: state.drop, roles: state.roles, players: state.players }); loaded = true; setMode('live');
+    var changed = first || JSON.stringify({ d: next.drop, r: next.roles, c: next.cp, p: next.players }) !== JSON.stringify({ d: state.drop, r: state.roles, c: state.cp, p: state.players });
+    state = next; remote = clone({ drop: state.drop, roles: state.roles, cp: state.cp, players: state.players }); loaded = true; setMode('live');
     fix.forEach(function (id) { var p = state.players[id]; enqueue(function () { return sb.from('ladder_players').upsert({ player: id, hero_order: p.order, pos: p.pos, w: p.w, l: p.l, hist: p.hist }, { onConflict: 'player' }); }); });
-    if (changed) { $('optDrop').checked = state.drop; $('optRoles').checked = state.roles; paintDropHint(); render({}); }
+    if (changed) { $('optDrop').checked = state.drop; $('optRoles').checked = state.roles; if (document.activeElement !== $('optCp')) $('optCp').value = state.cp; paintDropHint(); render({}); }
   }
   function loadAll() {
     if (!sb) return Promise.resolve();
     return Promise.all([
       sb.from('ladder_players').select('player,hero_order,pos,w,l,hist'),
-      sb.from('ladder_settings').select('drop_on_loss,role_limits').eq('id', 1).maybeSingle()
+      sb.from('ladder_settings').select('*').eq('id', 1).maybeSingle()
     ]).then(function (r) {
       if (r.some(function (x) { return x.error; })) { setMode(loaded ? 'error' : 'offline'); return; }
       if (writing) return;
@@ -500,7 +519,7 @@ img { max-width: 100%; }
   function loss(pid) {
     var p = state.players[pid]; if (!p || p.pos >= TOTAL) return;
     pushHist(p); p.l++;
-    if (state.drop && p.pos > 0) p.pos--;
+    if (state.drop && p.pos > 0 && !isCheckpoint(p.pos)) p.pos--;
     state.sel = pid; save(); render();
   }
   function undo(pid) {
@@ -554,12 +573,20 @@ img { max-width: 100%; }
       '<div class="phead"><h2>' + pl.name + '</h2><span class="rec">' + p.w + ' W &middot; ' + p.l + ' L</span></div>' +
       '<div class="rung">' + p.pos + '<span>of ' + TOTAL + ' heroes cleared</span></div>' +
       '<div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="' + TOTAL + '" aria-valuenow="' + p.pos + '" aria-label="' + pl.name + ' progress"><i style="width:' + pct + '%"></i></div>' +
+      cpLine(p) +
       now +
       '<div class="pbtns">' +
         '<button class="btn good" type="button" data-act="win"' + (done ? ' disabled' : '') + '>Win</button>' +
         '<button class="btn outline-danger" type="button" data-act="loss"' + (done ? ' disabled' : '') + '>Loss</button>' +
         '<button class="linkish" type="button" data-act="undo"' + (p.hist.length ? '' : ' disabled') + '>Undo</button>' +
       '</div></article>';
+  }
+
+  function cpLine(p) {
+    if (!state.cp || !state.drop || p.pos >= TOTAL) return '';
+    var safe = lastCheckpoint(p.pos), next = safe + state.cp;
+    var txt = isCheckpoint(p.pos) ? '<b>On a checkpoint:</b> a loss keeps you on this rung.' : (safe ? 'Safe at ' + safe + '. ' : '') + (next < TOTAL ? 'Next checkpoint at ' + next + '.' : 'No checkpoint left before the top.');
+    return '<div class="cpline">' + txt + '</div>';
   }
 
   function renderCards() {
@@ -579,7 +606,7 @@ img { max-width: 100%; }
       var h = BY[id], t = document.createElement('div');
       t.className = 'tile'; t.style.setProperty('--c', clsVar(h.cls));
       t.title = h.name + ' (' + CLS[h.cls] + ')';
-      t.innerHTML = '<img src="' + IMG[id] + '" alt=""><span class="n">' + (i + 1) + '</span><span class="ok">' + CHECK + '</span><span class="en">' + esc(h.name) + '</span>';
+      t.innerHTML = '<img src="' + IMG[id] + '" alt=""><span class="n">' + (i + 1) + '</span><span class="ok">' + CHECK + '</span><span class="cp" title="Checkpoint">' + FLAG + '</span><span class="en">' + esc(h.name) + '</span>';
       grid.insertBefore(t, frame);
       return t;
     });
@@ -603,6 +630,7 @@ img { max-width: 100%; }
     if (rebuild) buildGrid();
     tiles.forEach(function (t, i) {
       t.classList.toggle('done', i < p.pos);
+      t.classList.toggle('ckpt', state.drop && isCheckpoint(i + 1) && i + 1 < TOTAL);
       t.classList.remove('pop');
     });
     if (opts && typeof opts.pop === 'number' && tiles[opts.pop]) {
@@ -615,6 +643,7 @@ img { max-width: 100%; }
     $('done').hidden = !done;
     $('doneText').textContent = name + ' cleared all ' + TOTAL + ' heroes with ' + p.w + ' wins and ' + p.l + ' losses.';
     $('reshuffleBtn').disabled = done; $('jumpBtn').disabled = done;
+    $('cpLegend').hidden = !(state.cp && state.drop);
   }
 
   function render(opts) { if (!loaded) return; renderCards(); renderLadder(opts); }
@@ -649,7 +678,15 @@ img { max-width: 100%; }
       }, 30);
     } else { state.roles = false; save(); paintDropHint(); }
   });
-  $('optDrop').addEventListener('change', function () { if (!loaded) return; state.drop = $('optDrop').checked; save(); paintDropHint(); });
+  $('optDrop').addEventListener('change', function () { if (!loaded) return; state.drop = $('optDrop').checked; save(); paintDropHint(); render({}); });
+  $('optCp').addEventListener('change', function () {
+    if (!loaded) { $('optCp').value = state.cp; return; }
+    var v = Math.round(Number($('optCp').value) || 0);
+    if (v < 0 || v >= TOTAL) v = 0;
+    $('optCp').value = v;
+    if (v === state.cp) return;
+    state.cp = v; save(); paintDropHint(); render({});
+  });
   $('reshuffleBtn').addEventListener('click', reshuffle);
   $('restartBtn').addEventListener('click', function () {
     if (!loaded) return;
@@ -666,6 +703,8 @@ img { max-width: 100%; }
   function paintDropHint() {
     $('rolesHint').textContent = state.roles ? 'Heroes on the same rung fit one team: at most 1 Tank, 2 Damage and 2 Support, and never the same hero twice.' : 'Off: every player has an independent order.';
     $('dropHint').textContent = state.drop ? 'After a loss the previous hero is back on the rung and no longer checked.' : 'A loss only adds to the record. Your rung stays where it is.';
+    $('cpHint').textContent = !state.drop ? 'Checkpoints only matter while a loss drops you a rung.' : state.cp ? 'After every ' + state.cp + ' cleared heroes a loss no longer drops you back.' : '0 means no checkpoints.';
+    $('optCp').disabled = !state.drop;
   }
 
   paintDropHint(); paintThemeBtns(); connect();
