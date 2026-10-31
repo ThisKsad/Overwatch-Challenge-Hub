@@ -165,6 +165,37 @@ button { font-family: inherit; }
 .count { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .count b { color: var(--fg); }
 @media (prefers-reduced-motion: no-preference) { .cell { transition: background 0.15s, border-color 0.15s; } }
+
+/* Hero squares: a small portrait in the top-left corner. */
+.cell .hp { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: var(--surface2); border: 1.5px solid var(--rc, var(--line)); }
+.cell.k-win .t, .cell.k-hero .t { font-weight: 600; }
+
+/* Challenge lists: per-card counts and three sub lists. */
+.mix { display: grid; gap: 10px; padding: 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); max-width: 760px; }
+.mix-row { display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
+.stepper { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; }
+.stepper .sb { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button { width: 34px; height: 34px; border: 0; background: var(--surface2); color: var(--fg); font: 600 18px/1 var(--f-body); cursor: pointer; }
+.stepper button:hover:not(:disabled) { filter: brightness(1.08); }
+.stepper button:disabled { opacity: 0.4; cursor: default; }
+.stepper output { min-width: 36px; text-align: center; font: 700 18px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.subtabs .pill[aria-selected="true"] { border-color: var(--accent-fill); box-shadow: 0 0 0 1px var(--accent-fill); }
+.subtabs .pill small { font-weight: 500; }
+.sub { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.role-h { margin: 6px 0 0; font: 700 18px/1 var(--f-display); letter-spacing: 0.05em; text-transform: uppercase; color: var(--rc); }
+.hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 6px; max-width: 760px; }
+.hchip { display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 14px; min-width: 0; }
+.hchip input { width: 18px; height: 18px; accent-color: var(--accent-fill); flex: none; margin: 0; }
+.hchip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: none; background: var(--surface2); }
+.hchip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hchip.off { background: transparent; }
+.hchip.off span { color: var(--muted); text-decoration: line-through; }
+.hchip.off img { opacity: 0.45; filter: grayscale(1); }
+.addrow select { flex: 0 1 190px; min-width: 0; font: 400 15px var(--f-body); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.prow .who { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.prow .who img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--surface2); }
+.empty { padding: 18px 14px; border-radius: 8px; border: 1px dashed var(--line); color: var(--muted); font-size: 14px; max-width: 760px; }
 html { background: var(--bg); }
 body { margin: 0; min-height: 100vh; }
 img { max-width: 100%; }
@@ -249,20 +280,61 @@ img { max-width: 100%; }
   </section>
 
   <section class="panel" id="pPool" role="tabpanel" aria-labelledby="tabPool" hidden>
-    <div class="poolbar">
-      <div class="count" id="poolCount"></div>
+    <div class="mix">
+      <span class="lbl">Squares per new card</span>
+      <div class="mix-row">
+        <div class="stepper"><span>Hero wins</span><span class="sb"><button type="button" data-step="win" data-d="-1" aria-label="Fewer hero wins">&minus;</button><output id="winN" aria-live="polite"></output><button type="button" data-step="win" data-d="1" aria-label="More hero wins">+</button></span></div>
+        <div class="stepper"><span>Hero challenges</span><span class="sb"><button type="button" data-step="hero" data-d="-1" aria-label="Fewer hero challenges">&minus;</button><output id="heroN" aria-live="polite"></output><button type="button" data-step="hero" data-d="1" aria-label="More hero challenges">+</button></span></div>
+      </div>
+      <p class="hint" id="mixHint"></p>
+    </div>
+    <div class="notice" id="noticeExtras" hidden></div>
+
+    <div class="subtabs" role="tablist" aria-label="Challenge lists" id="subtabs">
+      <button class="pill" type="button" role="tab" data-sub="general" id="stGeneral" aria-controls="sGeneral"></button>
+      <button class="pill" type="button" role="tab" data-sub="win" id="stWin" aria-controls="sWin"></button>
+      <button class="pill" type="button" role="tab" data-sub="hero" id="stHero" aria-controls="sHero"></button>
+    </div>
+
+    <div class="sub" id="sGeneral" role="tabpanel" aria-labelledby="stGeneral">
+      <div class="poolbar">
+        <div class="count" id="poolCount"></div>
+        <div class="addrow">
+          <input type="text" id="newCh" maxlength="70" placeholder="Add your own challenge" aria-label="New challenge">
+          <button class="btn primary" type="button" id="addBtn">Add</button>
+        </div>
+        <div class="cardbar">
+          <button class="btn" type="button" id="allOn">Enable all</button>
+          <button class="btn" type="button" id="allOff">Disable all</button>
+          <button class="btn" type="button" id="restoreBtn">Restore defaults</button>
+        </div>
+      </div>
+      <ul class="plist" id="plist"></ul>
+    </div>
+
+    <div class="sub" id="sWin" role="tabpanel" aria-labelledby="stWin" hidden>
+      <div class="count" id="winCount"></div>
+      <div class="cardbar">
+        <button class="btn" type="button" id="winAllOn">Enable all</button>
+        <button class="btn" type="button" id="winAllOff">Disable all</button>
+      </div>
+      <div id="winList"></div>
+    </div>
+
+    <div class="sub" id="sHero" role="tabpanel" aria-labelledby="stHero" hidden>
+      <div class="count" id="heroCount"></div>
       <div class="addrow">
-        <input type="text" id="newCh" maxlength="70" placeholder="Add your own challenge" aria-label="New challenge">
-        <button class="btn primary" type="button" id="addBtn">Add</button>
+        <select id="newHeroWho" aria-label="Hero"></select>
+        <input type="text" id="newHeroCh" maxlength="70" placeholder="e.g. Hit 4 sleeps as Ana" aria-label="New hero challenge">
+        <button class="btn primary" type="button" id="addHeroBtn">Add</button>
       </div>
       <div class="cardbar">
-        <button class="btn" type="button" id="allOn">Enable all</button>
-        <button class="btn" type="button" id="allOff">Disable all</button>
-        <button class="btn" type="button" id="restoreBtn">Restore defaults</button>
+        <button class="btn" type="button" id="heroAllOn">Enable all</button>
+        <button class="btn" type="button" id="heroAllOff">Disable all</button>
       </div>
+      <ul class="plist" id="heroList"></ul>
     </div>
-    <ul class="plist" id="plist"></ul>
-    <p class="hint">New cards are drawn from the enabled challenges. Cards already on the table keep their squares until you draw again.</p>
+    <p class="hint">New cards mix the three lists using the counts above; the remaining squares come from the general challenges. Cards already on the table keep their squares until you draw again.</p>
   </section>
 
   <p class="page-foot">Cards and challenges are shared live: everyone who opens this page sees the same cards. Your tab and player choice stay on your device.</p>
@@ -281,6 +353,7 @@ img { max-width: 100%; }
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../assets/heroes.js"></script>
 <script>
 (function () {
   'use strict';
@@ -301,6 +374,14 @@ img { max-width: 100%; }
   var CROSS = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>';
   var SUN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>';
   var MOON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>';
+
+  /* Heroes for the "Win a match as X" list and the hero challenges. */
+  var HD = window.HERO_DATA || { heroes: [], images: {} };
+  var HEROES = HD.heroes, IMG = HD.images || {}, HERO_BY = {};
+  HEROES.forEach(function (h) { HERO_BY[h.id] = h; });
+  var ROLES = [{ id: 'tank', name: 'Tank' }, { id: 'damage', name: 'Damage' }, { id: 'support', name: 'Support' }];
+  var CFG_DEFAULT = { win: 2, hero: 4, off: [] };
+  function winText(h) { return 'Win a match as ' + h.name; }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -352,10 +433,31 @@ img { max-width: 100%; }
   var uid = 0;
   function newId() { uid++; return 'c' + Date.now().toString(36) + uid + rnd(1296).toString(36); }
   function enabled() { return state.pool.filter(function (p) { return p.on; }); }
+  function winsOn() { return HEROES.filter(function (h) { return state.cfg.off.indexOf(h.id) < 0; }); }
+  function heroOn() { return state.heroPool.filter(function (p) { return p.on && HERO_BY[p.hero]; }); }
+  /* How a new card is put together: the hero lists give up to their per-card count, general challenges fill the rest. */
+  function mix() {
+    var nw = Math.min(state.cfg.win, winsOn().length), nh = Math.min(state.cfg.hero, heroOn().length);
+    return { win: nw, hero: nh, general: SIZE - nw - nh, ok: enabled().length >= SIZE - nw - nh };
+  }
   function drawCells() {
-    var en = enabled();
-    if (en.length < SIZE) return null;
-    return shuffle(en).slice(0, SIZE).map(function (p) { return { t: p.text, d: false, by: [] }; });
+    var m = mix();
+    if (!m.ok) return null;
+    var cells = [], seen = {}, used = {};
+    shuffle(heroOn()).forEach(function (p) {
+      if (cells.length >= m.hero || seen[p.text.toLowerCase()]) return;
+      seen[p.text.toLowerCase()] = 1; used[p.hero] = 1; cells.push({ t: p.text, d: false, by: [], k: 'hero', h: p.hero });
+    });
+    /* Hero wins prefer heroes that have no challenge on this card yet. */
+    var wins = shuffle(winsOn()), fresh = wins.filter(function (h) { return !used[h.id]; });
+    fresh.concat(wins.filter(function (h) { return used[h.id]; })).slice(0, m.win).forEach(function (h) {
+      seen[winText(h).toLowerCase()] = 1; cells.push({ t: winText(h), d: false, by: [], k: 'win', h: h.id });
+    });
+    shuffle(enabled()).forEach(function (p) {
+      if (cells.length >= SIZE || seen[p.text.toLowerCase()]) return;
+      seen[p.text.toLowerCase()] = 1; cells.push({ t: p.text, d: false, by: [] });
+    });
+    return cells.length === SIZE ? shuffle(cells) : null;
   }
   function fallbackCells() {
     var seen = {}, texts = [];
@@ -368,9 +470,12 @@ img { max-width: 100%; }
   function clean(x) {
     var raw = Array.isArray(x.by) ? x.by : [];
     var by = PLAYERS.map(function (p) { return p.id; }).filter(function (id) { return raw.indexOf(id) >= 0; });
-    return { t: RENAMES[x.t] || x.t, d: x.d === true, by: by };
+    var out = { t: RENAMES[x.t] || x.t, d: x.d === true, by: by };
+    if ((x.k === 'win' || x.k === 'hero') && typeof x.h === 'string') { out.k = x.k; out.h = x.h; }
+    return out;
   }
-  var state = { tab: 'own', ownSel: 'lukas', actor: 'lukas', pool: [], own: {}, shared: null, round: { winner: null, how: null } };
+  var state = { tab: 'own', ownSel: 'lukas', actor: 'lukas', sub: 'general', pool: [], heroPool: [], cfg: clone(CFG_DEFAULT), own: {}, shared: null, round: { winner: null, how: null } };
+  var extrasOk = true;
   var dismissed = null;
   try {
     var l0 = JSON.parse(localStorage.getItem(LOCAL_KEY));
@@ -378,6 +483,7 @@ img { max-width: 100%; }
       if (l0.tab === 'shared' || l0.tab === 'pool') state.tab = l0.tab;
       if (PLAYERS.some(function (p) { return p.id === l0.ownSel; })) state.ownSel = l0.ownSel;
       if (PLAYERS.some(function (p) { return p.id === l0.actor; })) state.actor = l0.actor;
+      if (l0.sub === 'win' || l0.sub === 'hero') state.sub = l0.sub;
     }
   } catch (e) { /* ignore */ }
 
@@ -390,19 +496,32 @@ img { max-width: 100%; }
       loadAll();
     });
   }
-  function snapshot() { return { pool: state.pool, own: state.own, shared: state.shared }; }
+  function snapshot() { return { pool: state.pool, heroPool: state.heroPool, cfg: state.cfg, own: state.own, shared: state.shared }; }
   function sortedPool(p) { return p.slice().sort(function (a, b) { return b.sort - a.sort; }); }
   function save() {
-    try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ tab: state.tab, ownSel: state.ownSel, actor: state.actor })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ tab: state.tab, ownSel: state.ownSel, actor: state.actor, sub: state.sub })); } catch (e) { /* ignore */ }
     if (!sb || !remote) return;
     var prev = remote; remote = clone(snapshot());
-    var old = {}; prev.pool.forEach(function (p) { old[p.id] = p; });
-    var cur = {}; state.pool.forEach(function (p) { cur[p.id] = p; });
-    var gone = prev.pool.filter(function (p) { return !cur[p.id]; }).map(function (p) { return p.id; });
-    if (gone.length) enqueue(function () { return sb.from('bingo_pool').delete().in('id', gone); });
-    var up = state.pool.filter(function (p) { var o = old[p.id]; return !o || o.text !== p.text || o.on !== p.on || o.sort !== p.sort; })
-      .map(function (p) { return { id: p.id, text: p.text, enabled: p.on, sort: p.sort }; });
-    if (up.length) enqueue(function () { return sb.from('bingo_pool').upsert(up, { onConflict: 'id' }); });
+    function syncList(table, before, now, same, row) {
+      var old = {}; before.forEach(function (p) { old[p.id] = p; });
+      var cur = {}; now.forEach(function (p) { cur[p.id] = p; });
+      var gone = before.filter(function (p) { return !cur[p.id]; }).map(function (p) { return p.id; });
+      if (gone.length) enqueue(function () { return sb.from(table).delete().in('id', gone); });
+      var up = now.filter(function (p) { return !old[p.id] || !same(old[p.id], p); }).map(row);
+      if (up.length) enqueue(function () { return sb.from(table).upsert(up, { onConflict: 'id' }); });
+    }
+    syncList('bingo_pool', prev.pool, state.pool,
+      function (o, p) { return o.text === p.text && o.on === p.on && o.sort === p.sort; },
+      function (p) { return { id: p.id, text: p.text, enabled: p.on, sort: p.sort }; });
+    if (extrasOk) {
+      syncList('bingo_hero_pool', prev.heroPool, state.heroPool,
+        function (o, p) { return o.text === p.text && o.hero === p.hero && o.on === p.on && o.sort === p.sort; },
+        function (p) { return { id: p.id, hero: p.hero, text: p.text, enabled: p.on, sort: p.sort }; });
+      if (JSON.stringify(prev.cfg) !== JSON.stringify(state.cfg)) {
+        var cfg = { win_per_card: state.cfg.win, hero_per_card: state.cfg.hero, win_off: state.cfg.off.slice() };
+        enqueue(function () { return sb.from('bingo_settings').update(cfg).eq('id', 1); });
+      }
+    }
     var cards = PLAYERS.map(function (p) { return p.id; }).concat(['shared']);
     cards.forEach(function (id) {
       var a = id === 'shared' ? prev.shared : prev.own[id], b = id === 'shared' ? state.shared : state.own[id];
@@ -424,11 +543,19 @@ img { max-width: 100%; }
       }
     });
   }
-  function applyRemote(poolRows, cardRows, roundRow) {
-    var next = { tab: state.tab, ownSel: state.ownSel, actor: state.actor, pool: [], own: {}, shared: null, round: { winner: roundRow && roundRow.winner ? roundRow.winner : null, how: roundRow ? roundRow.how : null } }, fix = [];
+  function intIn(v, d) { var n = Math.round(Number(v)); return isFinite(n) && n >= 0 && n <= SIZE ? n : d; }
+  function applyRemote(poolRows, cardRows, roundRow, heroRows, cfgRow) {
+    var next = { tab: state.tab, ownSel: state.ownSel, actor: state.actor, sub: state.sub, pool: [], heroPool: [], cfg: clone(CFG_DEFAULT), own: {}, shared: null, round: { winner: roundRow && roundRow.winner ? roundRow.winner : null, how: roundRow ? roundRow.how : null } }, fix = [];
     next.pool = poolRows.filter(function (r) { return r && typeof r.id === 'string' && typeof r.text === 'string'; })
       .map(function (r) { return { id: r.id, text: RENAMES[r.text] || r.text, on: r.enabled !== false, sort: Number(r.sort) || 0 }; });
     next.pool = sortedPool(next.pool);
+    next.heroPool = sortedPool((heroRows || []).filter(function (r) { return r && typeof r.id === 'string' && typeof r.text === 'string' && typeof r.hero === 'string'; })
+      .map(function (r) { return { id: r.id, hero: r.hero, text: r.text, on: r.enabled !== false, sort: Number(r.sort) || 0 }; }));
+    if (cfgRow) {
+      next.cfg.win = intIn(cfgRow.win_per_card, CFG_DEFAULT.win);
+      next.cfg.hero = intIn(cfgRow.hero_per_card, CFG_DEFAULT.hero);
+      next.cfg.off = Array.isArray(cfgRow.win_off) ? cfgRow.win_off.filter(function (id) { return typeof id === 'string'; }) : [];
+    }
     var saved = state; state = next;
     function cardOfRow(id) {
       var r = cardRows.filter(function (x) { return x.card === id; })[0];
@@ -440,7 +567,7 @@ img { max-width: 100%; }
     PLAYERS.forEach(function (p) { next.own[p.id] = cardOfRow(p.id); });
     next.shared = cardOfRow('shared');
     var first = !loaded;
-    var changed = first || JSON.stringify(snapshot()) !== JSON.stringify({ pool: saved.pool, own: saved.own, shared: saved.shared }) || next.round.winner !== saved.round.winner;
+    var changed = first || JSON.stringify(snapshot()) !== JSON.stringify({ pool: saved.pool, heroPool: saved.heroPool, cfg: saved.cfg, own: saved.own, shared: saved.shared }) || next.round.winner !== saved.round.winner;
     remote = clone(snapshot()); loaded = true; setMode('live');
     fix.forEach(function (id) { var c = clone(id === 'shared' ? state.shared.cells : state.own[id].cells); enqueue(function () { return sb.from('bingo_cards').upsert({ card: id, cells: c }, { onConflict: 'card' }); }); });
     if (changed) render();
@@ -451,11 +578,15 @@ img { max-width: 100%; }
     return Promise.all([
       sb.from('bingo_pool').select('id,text,enabled,sort'),
       sb.from('bingo_cards').select('card,cells'),
-      sb.from('rounds').select('winner,how').eq('mode', 'bingo').maybeSingle()
+      sb.from('rounds').select('winner,how').eq('mode', 'bingo').maybeSingle(),
+      sb.from('bingo_hero_pool').select('id,hero,text,enabled,sort'),
+      sb.from('bingo_settings').select('win_per_card,hero_per_card,win_off').eq('id', 1).maybeSingle()
     ]).then(function (r) {
-      if (r.some(function (x) { return x.error; })) { setMode(loaded ? 'error' : 'offline'); return; }
+      if (r.slice(0, 3).some(function (x) { return x.error; })) { setMode(loaded ? 'error' : 'offline'); return; }
       if (writing) return;
-      applyRemote(r[0].data || [], r[1].data || [], r[2].data);
+      /* Older databases without the hero tables still work: hero wins use the defaults and the hero lists cannot be edited. */
+      extrasOk = !r[3].error && !r[4].error && !!r[4].data;
+      applyRemote(r[0].data || [], r[1].data || [], r[2].data, extrasOk ? r[3].data : [], extrasOk ? r[4].data : null);
     }, function () { setMode(loaded ? 'error' : 'offline'); });
   }
   function connect() {
@@ -465,7 +596,7 @@ img { max-width: 100%; }
     var t = null;
     function poke() { clearTimeout(t); t = setTimeout(loadAll, 150); }
     var ch = sb.channel('bingo-changes');
-    ['bingo_pool', 'bingo_cards', 'rounds'].forEach(function (tb) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, poke); });
+    ['bingo_pool', 'bingo_cards', 'rounds', 'bingo_hero_pool', 'bingo_settings'].forEach(function (tb) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, poke); });
     ch.subscribe();
     setInterval(loadAll, 20000);
   }
@@ -536,18 +667,20 @@ img { max-width: 100%; }
         names = x.by.map(pname).join(', ');
       }
       var label = x.t + (on ? ', done' + (names ? ' by ' + names : '') : '');
-      return '<button type="button" class="cell' + (info.inLine[i] ? ' line' : '') + '" data-i="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '" style="' + style + '">' +
-        '<span class="t">' + esc(x.t) + '</span>' + mark + '</button>';
+      var hero = x.k && HERO_BY[x.h], pic = '';
+      if (hero && IMG[hero.id]) pic = '<img class="hp" src="' + IMG[hero.id] + '" alt="" style="--rc:var(--' + hero.cls + ')">';
+      return '<button type="button" class="cell' + (x.k ? ' k-' + x.k : '') + (info.inLine[i] ? ' line' : '') + '" data-i="' + i + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '" style="' + style + '">' +
+        pic + '<span class="t">' + esc(x.t) + '</span>' + mark + '</button>';
     }).join('');
   }
   function bingoWord(n) { return n + (n === 1 ? ' bingo' : ' bingos'); }
 
   function noticeHtml() {
-    var n = enabled().length;
-    return n >= SIZE ? '' : 'Only ' + n + ' challenge' + (n === 1 ? ' is' : 's are') + ' enabled. Enable at least ' + SIZE + ' on the Challenges tab to draw new cards.';
+    var n = enabled().length, m = mix();
+    return m.ok ? '' : 'Only ' + n + ' general challenge' + (n === 1 ? ' is' : 's are') + ' enabled. A new card needs ' + m.general + ' of them, so enable more on the Challenges tab to draw new cards.';
   }
   function paintNotices() {
-    var h = noticeHtml(), canDraw = enabled().length >= SIZE;
+    var h = noticeHtml(), canDraw = mix().ok;
     ['noticeOwn', 'noticeShared'].forEach(function (id) { $(id).textContent = h; $(id).hidden = !h; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-act="draw"]'), function (b) { b.disabled = !canDraw; });
     $('drawAll').disabled = !canDraw;
@@ -574,9 +707,78 @@ img { max-width: 100%; }
     }).join('');
     $('sharedBoard').innerHTML = boardHtml(card.cells, 'shared', info);
   }
+  function heroPic(id) { return IMG[id] ? '<img src="' + IMG[id] + '" alt="" loading="lazy">' : ''; }
+  function renderMix() {
+    var m = mix(), wAvail = winsOn().length, hAvail = heroOn().length;
+    $('winN').textContent = state.cfg.win; $('heroN').textContent = state.cfg.hero;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (b) {
+      var k = b.dataset.step, d = +b.dataset.d, v = state.cfg[k] + d;
+      b.disabled = !extrasOk || v < 0 || state.cfg.win + state.cfg.hero + d > SIZE;
+    });
+    var t = 'Each new card: ' + m.win + ' hero win' + (m.win === 1 ? '' : 's') + ', ' + m.hero + ' hero challenge' + (m.hero === 1 ? '' : 's') + ' and ' + m.general + ' general challenge' + (m.general === 1 ? '' : 's') + '.';
+    var short = [];
+    if (m.win < state.cfg.win) short.push('only ' + wAvail + ' hero win' + (wAvail === 1 ? ' is' : 's are') + ' enabled');
+    if (m.hero < state.cfg.hero) short.push(hAvail ? 'only ' + hAvail + ' hero challenge' + (hAvail === 1 ? ' is' : 's are') + ' enabled' : 'no hero challenges are enabled yet');
+    if (short.length) t += ' Fewer hero squares than set, because ' + short.join(' and ') + '; general challenges fill the gap.';
+    $('mixHint').textContent = t;
+    var nx = $('noticeExtras');
+    nx.hidden = extrasOk;
+    nx.textContent = extrasOk ? '' : 'The hero lists are not set up in the database yet. Cards use 2 hero wins with every hero, and the hero lists and counts cannot be changed until the update is applied.';
+  }
+  function renderSubtabs() {
+    var labels = {
+      general: 'General <small>' + enabled().length + '/' + state.pool.length + '</small>',
+      win: 'Hero wins <small>' + winsOn().length + '/' + HEROES.length + '</small>',
+      hero: 'Hero challenges <small>' + heroOn().length + '/' + state.heroPool.length + '</small>'
+    };
+    ['general', 'win', 'hero'].forEach(function (k) {
+      var id = k.charAt(0).toUpperCase() + k.slice(1), tab = $('st' + id);
+      tab.innerHTML = labels[k];
+      tab.setAttribute('aria-selected', state.sub === k ? 'true' : 'false');
+      tab.tabIndex = state.sub === k ? 0 : -1;
+      $('s' + id).hidden = state.sub !== k;
+    });
+  }
+  function renderWins() {
+    var on = winsOn().length;
+    $('winCount').innerHTML = '<b>' + on + '</b> of ' + HEROES.length + ' heroes enabled. A square reads &ldquo;Win a match as &lt;hero&gt;&rdquo;.';
+    $('winList').innerHTML = ROLES.map(function (r) {
+      var hs = HEROES.filter(function (h) { return h.cls === r.id; });
+      if (!hs.length) return '';
+      return '<h3 class="role-h" style="--rc:var(--' + r.id + ')">' + r.name + '</h3><div class="hgrid">' + hs.map(function (h) {
+        var off = state.cfg.off.indexOf(h.id) >= 0;
+        return '<label class="hchip' + (off ? ' off' : '') + '"><input type="checkbox" data-win="' + esc(h.id) + '"' + (off ? '' : ' checked') + (extrasOk ? '' : ' disabled') + '>' + heroPic(h.id) + '<span>' + esc(h.name) + '</span></label>';
+      }).join('') + '</div>';
+    }).join('');
+    $('winAllOn').disabled = $('winAllOff').disabled = !extrasOk;
+  }
+  function renderHeroPool() {
+    var on = heroOn().length;
+    $('heroCount').innerHTML = '<b>' + on + '</b> of ' + state.heroPool.length + ' hero challenges enabled.';
+    var sel = $('newHeroWho'), cur = sel.value;
+    if (!sel.options.length) {
+      sel.innerHTML = ROLES.map(function (r) {
+        return '<optgroup label="' + r.name + '">' + HEROES.filter(function (h) { return h.cls === r.id; }).map(function (h) { return '<option value="' + esc(h.id) + '">' + esc(h.name) + '</option>'; }).join('') + '</optgroup>';
+      }).join('');
+      if (cur) sel.value = cur;
+    }
+    sel.disabled = $('newHeroCh').disabled = $('addHeroBtn').disabled = !extrasOk;
+    $('heroAllOn').disabled = $('heroAllOff').disabled = !extrasOk || !state.heroPool.length;
+    if (!state.heroPool.length) {
+      $('heroList').innerHTML = '<li class="empty">No hero challenges yet. Pick a hero, write a challenge for them and press Add.</li>';
+      return;
+    }
+    $('heroList').innerHTML = state.heroPool.map(function (p) {
+      var h = HERO_BY[p.hero];
+      return '<li class="prow' + (p.on ? '' : ' off') + '"><label class="chk"><input type="checkbox" data-hid="' + esc(p.id) + '"' + (p.on ? ' checked' : '') + (extrasOk ? '' : ' disabled') + '><span>' + esc(p.text) + '</span></label>' +
+        '<span class="who">' + (h ? heroPic(h.id) + esc(h.name) : 'Unknown hero') + '</span>' +
+        '<button type="button" class="rm" data-hrm="' + esc(p.id) + '" aria-label="Remove hero challenge: ' + esc(p.text) + '"' + (extrasOk ? '' : ' disabled') + '>' + CROSS + '</button></li>';
+    }).join('');
+  }
   function renderPool() {
-    var on = enabled().length;
-    $('poolCount').innerHTML = '<b>' + on + '</b> of ' + state.pool.length + ' challenges enabled' + (on < SIZE ? '. Enable at least ' + SIZE + ' to draw a card.' : '.');
+    renderMix(); renderSubtabs(); renderWins(); renderHeroPool();
+    var on = enabled().length, need = mix().general;
+    $('poolCount').innerHTML = '<b>' + on + '</b> of ' + state.pool.length + ' general challenges enabled' + (on < need ? '. Enable at least ' + need + ' to draw a card.' : '.');
     $('plist').innerHTML = state.pool.map(function (p) {
       return '<li class="prow' + (p.on ? '' : ' off') + '"><label class="chk"><input type="checkbox" data-id="' + esc(p.id) + '"' + (p.on ? ' checked' : '') + '><span>' + esc(p.text) + '</span></label>' +
         '<button type="button" class="rm" data-rm="' + esc(p.id) + '" aria-label="Remove challenge: ' + esc(p.text) + '">' + CROSS + '</button></li>';
@@ -666,7 +868,7 @@ img { max-width: 100%; }
     var titles = { clear: 'Clear all ticks?', draw: 'Draw a new card?' };
     var texts = {
       clear: 'This removes every tick on ' + who(kind) + '. The squares stay where they are.',
-      draw: 'This picks 25 random squares from the enabled challenges and places them in a new order on ' + who(kind) + '. Every tick is cleared.'
+      draw: 'This picks 25 random squares from the enabled challenge lists and places them in a new order on ' + who(kind) + '. Every tick is cleared.'
     };
     var oks = { clear: 'Clear ticks', draw: 'Draw new card' };
     if (hasTicks(card)) confirmDlg(titles[act], texts[act], oks[act], apply); else apply();
@@ -762,6 +964,61 @@ img { max-width: 100%; }
     save(); renderPool(); paintNotices();
     toast(added ? added + ' default challenge' + (added === 1 ? '' : 's') + ' restored' : 'All default challenges are already on the list');
   });
+
+  /* ---------- Hero lists ---------- */
+  function poolChanged() { save(); renderPool(); paintNotices(); }
+  $('subtabs').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sub]'); if (!b) return;
+    state.sub = b.dataset.sub; save(); renderSubtabs();
+  });
+  $('subtabs').addEventListener('keydown', function (e) {
+    var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return;
+    var order = ['general', 'win', 'hero'], n = order[(order.indexOf(state.sub) + d + 3) % 3];
+    state.sub = n; save(); renderSubtabs(); $('st' + n.charAt(0).toUpperCase() + n.slice(1)).focus();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (b) {
+    b.addEventListener('click', function () {
+      if (!loaded || !extrasOk) return;
+      var k = b.dataset.step, v = state.cfg[k] + (+b.dataset.d), other = k === 'win' ? state.cfg.hero : state.cfg.win;
+      if (v < 0 || v + other > SIZE) return;
+      state.cfg[k] = v; poolChanged();
+    });
+  });
+  $('winList').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-win'); if (!id || !extrasOk) return;
+    var off = state.cfg.off.filter(function (x) { return x !== id; });
+    if (!e.target.checked) off.push(id);
+    state.cfg.off = off; poolChanged();
+  });
+  $('winAllOn').addEventListener('click', function () { if (!extrasOk) return; state.cfg.off = []; poolChanged(); });
+  $('winAllOff').addEventListener('click', function () { if (!extrasOk) return; state.cfg.off = HEROES.map(function (h) { return h.id; }); poolChanged(); });
+  $('heroList').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-hid'); if (!id) return;
+    state.heroPool.forEach(function (p) { if (p.id === id) p.on = e.target.checked; });
+    poolChanged();
+  });
+  $('heroList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-hrm]'); if (!b) return;
+    var id = b.getAttribute('data-hrm'), idx = -1, item = null;
+    state.heroPool.forEach(function (p, i) { if (p.id === id) { idx = i; item = p; } });
+    if (idx < 0) return;
+    state.heroPool.splice(idx, 1); poolChanged();
+    toast('Removed from the list', 'Undo', function () { if (state.heroPool.some(function (p) { return p.id === item.id; })) return; state.heroPool.splice(Math.min(idx, state.heroPool.length), 0, item); poolChanged(); });
+  });
+  function addHeroChallenge() {
+    if (!loaded || !extrasOk) return;
+    var inp = $('newHeroCh'), hero = $('newHeroWho').value, text = inp.value.replace(/\s+/g, ' ').trim();
+    if (!HERO_BY[hero]) return;
+    if (!text) { inp.focus(); return; }
+    if (state.heroPool.some(function (p) { return p.text.toLowerCase() === text.toLowerCase(); })) { toast('That hero challenge is already on the list'); return; }
+    state.heroPool.unshift({ id: newId(), hero: hero, text: text, on: true, sort: state.heroPool.reduce(function (m, p) { return Math.max(m, p.sort); }, 0) + 1 });
+    inp.value = ''; poolChanged(); inp.focus();
+    toast('Added to the top of the list');
+  }
+  $('addHeroBtn').addEventListener('click', addHeroChallenge);
+  $('newHeroCh').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addHeroChallenge(); } });
+  $('heroAllOn').addEventListener('click', function () { state.heroPool.forEach(function (p) { p.on = true; }); poolChanged(); });
+  $('heroAllOff').addEventListener('click', function () { state.heroPool.forEach(function (p) { p.on = false; }); poolChanged(); });
 
   paintThemeBtns();
   render();
