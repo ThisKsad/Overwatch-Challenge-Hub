@@ -316,6 +316,12 @@
         });
       });
       $('edit-' + p.id).addEventListener('toggle', function () { renderEdit(p.id); });
+      // Tapping a wheel does the same as the Spin button, as long as that wheel takes part.
+      var box = $('wbox-' + p.id);
+      box.addEventListener('click', function () { if (box.classList.contains('can-spin')) spin(); });
+      box.addEventListener('keydown', function (e) {
+        if ((e.key === 'Enter' || e.key === ' ') && box.classList.contains('can-spin')) { e.preventDefault(); spin(); }
+      });
     });
   }
 
@@ -379,6 +385,10 @@
         res.className = 'result idle'; res.style.removeProperty('--c');
         res.innerHTML = '<div class="pic">' + (done ? '✓' : (S.sel[pid] ? '?' : '–')) + '</div><div>' + (done ? 'Nothing left to spin.' : (S.sel[pid] ? 'Waiting for the next spin.' : 'Sitting out this round.')) + '</div>';
       }
+      var canSpin = !spinning && !done && !!S.sel[pid] && !(pend && !act.length), box = $('wbox-' + pid);
+      box.classList.toggle('can-spin', canSpin);
+      if (canSpin) { box.setAttribute('role', 'button'); box.tabIndex = 0; box.title = pend ? 'Spin again' : 'Spin'; }
+      else { box.removeAttribute('role'); box.removeAttribute('tabindex'); box.removeAttribute('title'); }
       $('reset-' + pid).disabled = spinning;
       if (rebuild) rebuildWheel(pid);
       renderEdit(pid);
