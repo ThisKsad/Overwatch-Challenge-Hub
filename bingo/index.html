@@ -286,6 +286,7 @@ img { max-width: 100%; }
         <div class="stepper"><span>Hero wins</span><span class="sb"><button type="button" data-step="win" data-d="-1" aria-label="Fewer hero wins">&minus;</button><output id="winN" aria-live="polite"></output><button type="button" data-step="win" data-d="1" aria-label="More hero wins">+</button></span></div>
         <div class="stepper"><span>Hero challenges</span><span class="sb"><button type="button" data-step="hero" data-d="-1" aria-label="Fewer hero challenges">&minus;</button><output id="heroN" aria-live="polite"></output><button type="button" data-step="hero" data-d="1" aria-label="More hero challenges">+</button></span></div>
       </div>
+      <label class="chk"><input type="checkbox" id="onePer"><span>Only one square per hero: either their win or one of their hero challenges</span></label>
       <p class="hint" id="mixHint"></p>
     </div>
     <div class="notice" id="noticeExtras" hidden></div>
@@ -380,7 +381,7 @@ img { max-width: 100%; }
   var HEROES = HD.heroes, IMG = HD.images || {}, HERO_BY = {};
   HEROES.forEach(function (h) { HERO_BY[h.id] = h; });
   var ROLES = [{ id: 'tank', name: 'Tank' }, { id: 'damage', name: 'Damage' }, { id: 'support', name: 'Support' }];
-  var CFG_DEFAULT = { win: 2, hero: 4, off: [] };
+  var CFG_DEFAULT = { win: 2, hero: 4, off: [], one: false };
   function winText(h) { return 'Win a match as ' + h.name; }
 
   function $(id) { return document.getElementById(id); }
@@ -436,8 +437,15 @@ img { max-width: 100%; }
   function winsOn() { return HEROES.filter(function (h) { return state.cfg.off.indexOf(h.id) < 0; }); }
   function heroOn() { return state.heroPool.filter(function (p) { return p.on && HERO_BY[p.hero]; }); }
   /* How a new card is put together: the hero lists give up to their per-card count, general challenges fill the rest. */
+  function heroCount() {
+    if (!state.cfg.one) return heroOn().length;
+    var h = {}; heroOn().forEach(function (p) { h[p.hero] = 1; });
+    return Object.keys(h).length;
+  }
   function mix() {
-    var nw = Math.min(state.cfg.win, winsOn().length), nh = Math.min(state.cfg.hero, heroOn().length);
+    var nh = Math.min(state.cfg.hero, heroCount());
+    /* With one square per hero, each hero challenge can block at most one hero win. */
+    var nw = Math.min(state.cfg.win, state.cfg.one ? Math.max(0, winsOn().length - nh) : winsOn().length);
     return { win: nw, hero: nh, general: SIZE - nw - nh, ok: enabled().length >= SIZE - nw - nh };
   }
   function drawCells() {
@@ -445,12 +453,12 @@ img { max-width: 100%; }
     if (!m.ok) return null;
     var cells = [], seen = {}, used = {};
     shuffle(heroOn()).forEach(function (p) {
-      if (cells.length >= m.hero || seen[p.text.toLowerCase()]) return;
+      if (cells.length >= m.hero || seen[p.text.toLowerCase()] || (state.cfg.one && used[p.hero])) return;
       seen[p.text.toLowerCase()] = 1; used[p.hero] = 1; cells.push({ t: p.text, d: false, by: [], k: 'hero', h: p.hero });
     });
     /* Hero wins prefer heroes that have no challenge on this card yet. */
     var wins = shuffle(winsOn()), fresh = wins.filter(function (h) { return !used[h.id]; });
-    fresh.concat(wins.filter(function (h) { return used[h.id]; })).slice(0, m.win).forEach(function (h) {
+    (state.cfg.one ? fresh : fresh.concat(wins.filter(function (h) { return used[h.id]; }))).slice(0, m.win).forEach(function (h) {
       seen[winText(h).toLowerCase()] = 1; cells.push({ t: winText(h), d: false, by: [], k: 'win', h: h.id });
     });
     shuffle(enabled()).forEach(function (p) {
@@ -475,7 +483,7 @@ img { max-width: 100%; }
     return out;
   }
   var state = { tab: 'own', ownSel: 'lukas', actor: 'lukas', sub: 'general', pool: [], heroPool: [], cfg: clone(CFG_DEFAULT), own: {}, shared: null, round: { winner: null, how: null } };
-  var extrasOk = true;
+  var extrasOk = true, hasOne = false;
   var dismissed = null;
   try {
     var l0 = JSON.parse(localStorage.getItem(LOCAL_KEY));
@@ -519,6 +527,7 @@ img { max-width: 100%; }
         function (p) { return { id: p.id, hero: p.hero, text: p.text, enabled: p.on, sort: p.sort }; });
       if (JSON.stringify(prev.cfg) !== JSON.stringify(state.cfg)) {
         var cfg = { win_per_card: state.cfg.win, hero_per_card: state.cfg.hero, win_off: state.cfg.off.slice() };
+        if (hasOne) cfg.one_per_hero = state.cfg.one;
         enqueue(function () { return sb.from('bingo_settings').update(cfg).eq('id', 1); });
       }
     }
@@ -555,6 +564,7 @@ img { max-width: 100%; }
       next.cfg.win = intIn(cfgRow.win_per_card, CFG_DEFAULT.win);
       next.cfg.hero = intIn(cfgRow.hero_per_card, CFG_DEFAULT.hero);
       next.cfg.off = Array.isArray(cfgRow.win_off) ? cfgRow.win_off.filter(function (id) { return typeof id === 'string'; }) : [];
+      next.cfg.one = cfgRow.one_per_hero === true;
     }
     var saved = state; state = next;
     function cardOfRow(id) {
@@ -580,12 +590,13 @@ img { max-width: 100%; }
       sb.from('bingo_cards').select('card,cells'),
       sb.from('rounds').select('winner,how').eq('mode', 'bingo').maybeSingle(),
       sb.from('bingo_hero_pool').select('id,hero,text,enabled,sort'),
-      sb.from('bingo_settings').select('win_per_card,hero_per_card,win_off').eq('id', 1).maybeSingle()
+      sb.from('bingo_settings').select('*').eq('id', 1).maybeSingle()
     ]).then(function (r) {
       if (r.slice(0, 3).some(function (x) { return x.error; })) { setMode(loaded ? 'error' : 'offline'); return; }
       if (writing) return;
       /* Older databases without the hero tables still work: hero wins use the defaults and the hero lists cannot be edited. */
       extrasOk = !r[3].error && !r[4].error && !!r[4].data;
+      hasOne = extrasOk && Object.prototype.hasOwnProperty.call(r[4].data, 'one_per_hero');
       applyRemote(r[0].data || [], r[1].data || [], r[2].data, extrasOk ? r[3].data : [], extrasOk ? r[4].data : null);
     }, function () { setMode(loaded ? 'error' : 'offline'); });
   }
@@ -718,8 +729,12 @@ img { max-width: 100%; }
     var t = 'Each new card: ' + m.win + ' hero win' + (m.win === 1 ? '' : 's') + ', ' + m.hero + ' hero challenge' + (m.hero === 1 ? '' : 's') + ' and ' + m.general + ' general challenge' + (m.general === 1 ? '' : 's') + '.';
     var short = [];
     if (m.win < state.cfg.win) short.push('only ' + wAvail + ' hero win' + (wAvail === 1 ? ' is' : 's are') + ' enabled');
-    if (m.hero < state.cfg.hero) short.push(hAvail ? 'only ' + hAvail + ' hero challenge' + (hAvail === 1 ? ' is' : 's are') + ' enabled' : 'no hero challenges are enabled yet');
+    var hHeroes = heroCount();
+    if (m.hero < state.cfg.hero) short.push(!hAvail ? 'no hero challenges are enabled yet' : state.cfg.one && hHeroes < hAvail ? 'the enabled hero challenges cover only ' + hHeroes + ' hero' + (hHeroes === 1 ? '' : 'es') : 'only ' + hAvail + ' hero challenge' + (hAvail === 1 ? ' is' : 's are') + ' enabled');
     if (short.length) t += ' Fewer hero squares than set, because ' + short.join(' and ') + '; general challenges fill the gap.';
+    $('onePer').checked = state.cfg.one;
+    $('onePer').disabled = !extrasOk || !hasOne;
+    if (extrasOk && !hasOne) t += ' The "one square per hero" option needs a small database update first.';
     $('mixHint').textContent = t;
     var nx = $('noticeExtras');
     nx.hidden = extrasOk;
@@ -983,6 +998,10 @@ img { max-width: 100%; }
       if (v < 0 || v + other > SIZE) return;
       state.cfg[k] = v; poolChanged();
     });
+  });
+  $('onePer').addEventListener('change', function (e) {
+    if (!loaded || !extrasOk || !hasOne) return;
+    state.cfg.one = e.target.checked; poolChanged();
   });
   $('winList').addEventListener('change', function (e) {
     var id = e.target.getAttribute('data-win'); if (!id || !extrasOk) return;
