@@ -307,7 +307,16 @@
         '<div class="wfoot"><button class="linkish warn" id="reset-' + p.id + '" type="button">Reset ' + p.name + '\'s wheel</button></div>';
       host.appendChild(card);
       wheels[p.id] = { canvas: $('cv-' + p.id), list: [], bitmap: null, angle: Math.random() * 360 };
-      $('sel-' + p.id).addEventListener('change', function (e) { S.sel[p.id] = e.target.checked; saveState(); renderWheelPage(); });
+      $('sel-' + p.id).addEventListener('change', function (e) {
+        S.sel[p.id] = e.target.checked;
+        // Unticking a wheel during a round takes it out of that round, so "We won" leaves its heroes alone.
+        if (!e.target.checked && S.pending && S.pending.players.indexOf(p.id) >= 0) {
+          var rest = S.pending.players.filter(function (x) { return x !== p.id; });
+          if (rest.length) { var picks = {}; rest.forEach(function (x) { picks[x] = S.pending.picks[x]; }); S.pending = { players: rest, picks: picks, relaxed: S.pending.relaxed, at: S.pending.at }; }
+          else S.pending = null;
+        }
+        saveState(); renderWheelPage();
+      });
       $('reset-' + p.id).addEventListener('click', function () {
         confirmDlg('Reset ' + p.name + '\'s wheel?', 'All 54 heroes go back on ' + p.name + '\'s wheel and the ' + wonCount(p.id) + ' wins are cleared.', 'Reset wheel', 'Keep it', function () {
           archiveWheel([p.id]); S.removed[p.id] = {}; S.order[p.id] = shuffledIds();
@@ -371,7 +380,7 @@
       var done = left === 0, inRound = pend && pend.players.indexOf(pid) >= 0;
       var card = $('card-' + pid);
       card.classList.toggle('off', !S.sel[pid] || done);
-      var cb = $('sel-' + pid); cb.checked = !!S.sel[pid] && !done; cb.disabled = !!pend || spinning || done;
+      var cb = $('sel-' + pid); cb.checked = !!S.sel[pid] && !done; cb.disabled = spinning || done;
       $('meta-' + pid).textContent = done ? 'All 54 heroes won' : left + ' left · ' + wonCount(pid) + ' won';
       $('mix-' + pid).innerHTML = CLASSES.map(function (k) { return '<span style="--c:var(--' + k[0] + ')"><i></i>' + k[1] + ' ' + c[k[0]] + '</span>'; }).join('');
       var res = $('res-' + pid);
