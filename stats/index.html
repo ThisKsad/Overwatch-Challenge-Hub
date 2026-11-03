@@ -316,6 +316,12 @@ img { max-width: 100%; }
     });
     return out;
   }
+  /* A bingo round can have several winners (everyone with a bingo when it was saved). Older rows only have the winner column. */
+  function winnersOf(r) {
+    var ws = r.data && Array.isArray(r.data.winners) ? r.data.winners.filter(function (id) { return PL.some(function (p) { return p.id === id; }); }) : [];
+    if (ws.length) return ws;
+    return r.winner && r.winner !== 'tie' ? [r.winner] : [];
+  }
   function bingoStats() {
     var out = { runs: byMode('bingo'), per: {}, shared: { n: 0, done: 0, bingos: 0 } };
     PL.forEach(function (p) { out.per[p.id] = { runs: 0, won: 0, lost: 0, draw: 0, done: 0, bingos: 0, best: 0, ticks: {} }; });
@@ -324,7 +330,7 @@ img { max-width: 100%; }
       PL.forEach(function (p) {
         var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
         s.runs++; s.done += x.done || 0; s.bingos += x.bingos || 0; s.best = Math.max(s.best, x.done || 0);
-        if (r.winner === p.id) s.won++; else if (r.winner === 'tie') s.draw++; else if (r.winner) s.lost++;
+        if (winnersOf(r).indexOf(p.id) >= 0) s.won++; else if (r.winner === 'tie') s.draw++; else if (r.winner) s.lost++;
         (x.ticked || []).forEach(function (t) { s.ticks[t] = (s.ticks[t] || 0) + 1; });
       });
       var sh = r.data && r.data.shared; if (sh) { out.shared.n++; out.shared.done += sh.done || 0; out.shared.bingos += sh.bingos || 0; }
@@ -385,7 +391,13 @@ img { max-width: 100%; }
     return '<section class="sec"><h3>' + title + '</h3>' + (hint ? '<p class="hint">' + hint + '</p>' : '') + '<div class="cols3">' + PL.map(function (p) { return '<div class="card" style="--pc:' + pc(p.id) + '"><h4><i></i>' + p.name + '</h4>' + fn(p.id) + '</div>'; }).join('') + '</div></section>';
   }
   function emptyAll(text) { return '<p class="stats-note">' + text + '</p>'; }
-  function winnerCell(w) { return w === 'tie' ? 'Draw' : (w ? '<i></i>' + pname(w) : '–'); }
+  function winnerCell(r) {
+    if (r.winner === 'tie') return 'Draw';
+    var ws = winnersOf(r);
+    if (!ws.length) return '–';
+    if (ws.length === 1) return '<i></i>' + pname(ws[0]);
+    return ws.map(function (id) { return '<i style="--pc:' + pc(id) + '"></i>' + pname(id); }).join(' &amp; ');
+  }
 
   /* ---------- Views ---------- */
   function viewOverview() {
@@ -411,7 +423,7 @@ img { max-width: 100%; }
     if (!list.length) return '<p class="empty">No finished versus games yet.</p>';
     return '<div class="tblwrap"><table class="t"><thead><tr><th>Date</th><th>Mode</th><th>Winner</th>' + PL.map(function (p) { return '<th>' + p.name + '</th>'; }).join('') + '</tr></thead><tbody>' + list.map(function (r) {
       var pl = (r.data && r.data.players) || {};
-      return '<tr><td>' + fdate(r.finished_at) + '</td><td>' + (r.mode === 'hunt' ? 'Ultimate Hunt' : 'Bingo') + '</td><td class="w"' + (r.winner && r.winner !== 'tie' ? ' style="--pc:' + pc(r.winner) + '"' : '') + '>' + winnerCell(r.winner) + '</td>' +
+      return '<tr><td>' + fdate(r.finished_at) + '</td><td>' + (r.mode === 'hunt' ? 'Ultimate Hunt' : 'Bingo') + '</td><td class="w"' + (winnersOf(r).length === 1 ? ' style="--pc:' + pc(winnersOf(r)[0]) + '"' : '') + '>' + winnerCell(r) + '</td>' +
         PL.map(function (p) { var x = pl[p.id]; if (!x) return '<td>–</td>'; return '<td>' + (r.mode === 'hunt' ? (x.total + ' ults · ' + x.done + '/' + N) : (x.done + '/25 · ' + (x.bingos || 0) + ' bingo' + (x.bingos === 1 ? '' : 's'))) + '</td>'; }).join('') + '</tr>';
     }).join('') + '</tbody></table></div>';
   }
