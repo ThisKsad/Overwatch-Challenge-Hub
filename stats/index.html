@@ -302,11 +302,21 @@ img { max-width: 100%; }
   function byMode(m) { return rows.filter(function (r) { return r.mode === m; }); }
   function zeroMap() { var o = {}; PL.forEach(function (p) { o[p.id] = 0; }); return o; }
 
+  /* A player only counts as having taken part in a round when they finished at least one challenge in it
+     (a ticked bingo square, an ultimate in the hunt, a won match on the ladder or wheel). Applies to all saved rows. */
+  function tookPart(r, x) {
+    if (!x) return false;
+    if (r.mode === 'wheel') return (x.wins || 0) > 0;
+    if (r.mode === 'ladder') return (x.w || 0) > 0;
+    if (r.mode === 'hunt') return (x.total || 0) > 0 || (x.done || 0) > 0;
+    return (x.done || 0) > 0;
+  }
+  function playersOf(r) { var pl = (r.data && r.data.players) || {}, o = {}; Object.keys(pl).forEach(function (k) { if (tookPart(r, pl[k])) o[k] = pl[k]; }); return o; }
   function huntStats() {
     var out = { runs: byMode('hunt'), per: {}, heroTotals: {} };
     PL.forEach(function (p) { out.per[p.id] = { runs: 0, won: 0, lost: 0, draw: 0, complete: 0, total: 0, done: 0, best: 0, heroes: {}, cls: { tank: 0, damage: 0, support: 0 } }; });
     out.runs.forEach(function (r) {
-      var pl = (r.data && r.data.players) || {};
+      var pl = playersOf(r);
       PL.forEach(function (p) {
         var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
         s.runs++; s.total += x.total || 0; s.done += x.done || 0; s.best = Math.max(s.best, x.total || 0);
@@ -328,7 +338,7 @@ img { max-width: 100%; }
     var out = { runs: byMode('bingo'), per: {}, shared: { n: 0, done: 0, bingos: 0 } };
     PL.forEach(function (p) { out.per[p.id] = { runs: 0, own: 0, won: 0, lost: 0, draw: 0, done: 0, bingos: 0, best: 0, ticks: {} }; });
     out.runs.forEach(function (r) {
-      var pl = (r.data && r.data.players) || {}, sharedRun = isSharedRun(r);
+      var pl = playersOf(r), sharedRun = isSharedRun(r);
       PL.forEach(function (p) {
         var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
         s.runs++;
@@ -344,7 +354,7 @@ img { max-width: 100%; }
     var out = { runs: byMode('ladder'), per: {} };
     PL.forEach(function (p) { out.per[p.id] = { runs: 0, w: 0, l: 0, best: 0, posSum: 0, complete: 0 }; });
     out.runs.forEach(function (r) {
-      var d = r.data || {}, s = out.per[d.player]; if (!s) return;
+      var d = r.data || {}, s = out.per[d.player]; if (!s || !tookPart(r, d)) return;
       s.runs++; s.w += d.w || 0; s.l += d.l || 0; s.best = Math.max(s.best, d.pos || 0); s.posSum += d.pos || 0; if ((d.pos || 0) >= (d.total || LADDER_TOTAL)) s.complete++;
     });
     return out;
@@ -353,7 +363,7 @@ img { max-width: 100%; }
     var out = { runs: byMode('wheel'), per: {} };
     PL.forEach(function (p) { out.per[p.id] = { runs: 0, wins: 0, best: 0, heroes: {}, cls: { tank: 0, damage: 0, support: 0 } }; });
     out.runs.forEach(function (r) {
-      var pl = (r.data && r.data.players) || {};
+      var pl = playersOf(r);
       PL.forEach(function (p) {
         var x = pl[p.id]; if (!x) return; var s = out.per[p.id];
         s.runs++; s.wins += x.wins || 0; s.best = Math.max(s.best, x.wins || 0);
@@ -406,15 +416,14 @@ img { max-width: 100%; }
   function viewOverview() {
     var h = huntStats(), b = bingoStats(), l = ladderStats(), w = wheelStats();
     var vs = {}; PL.forEach(function (p) { vs[p.id] = h.per[p.id].won + b.per[p.id].won; });
-    var played = h.runs.length + b.runs.length;
     var html = '';
     if (!rows.length) html += emptyAll('No finished games yet. Results are saved when a Hunt or Bingo winner is confirmed, and when a Ladder or Wheel is reset.');
     html += '<div class="vs-strip">' + PL.map(function (p) {
       var liveWheel = live.wheel.filter(function (r) { return r.player === p.id; }).length;
       return pcol(p.id, vs[p.id], 'versus wins', [
-        ['Ultimate Hunts won', h.per[p.id].won + ' of ' + h.runs.length],
-        ['Bingo rounds won', b.per[p.id].won + ' of ' + b.runs.length],
-        ['Versus win rate', pct(vs[p.id], played)],
+        ['Ultimate Hunts won', h.per[p.id].won + ' of ' + h.per[p.id].runs],
+        ['Bingo rounds won', b.per[p.id].won + ' of ' + b.per[p.id].runs],
+        ['Versus win rate', pct(vs[p.id], h.per[p.id].runs + b.per[p.id].runs)],
         ['Ladder: best rung', l.per[p.id].best ? l.per[p.id].best + ' / ' + LADDER_TOTAL : '–'],
         ['Wheel: matches won', w.per[p.id].wins + liveWheel]
       ]);
@@ -425,7 +434,7 @@ img { max-width: 100%; }
   function recentTable(list) {
     if (!list.length) return '<p class="empty">No finished versus games yet.</p>';
     return '<div class="tblwrap"><table class="t"><thead><tr><th>Date</th><th>Mode</th><th>Winner</th>' + PL.map(function (p) { return '<th>' + p.name + '</th>'; }).join('') + '</tr></thead><tbody>' + list.map(function (r) {
-      var pl = (r.data && r.data.players) || {};
+      var pl = playersOf(r);
       return '<tr><td>' + fdate(r.finished_at) + '</td><td>' + (r.mode === 'hunt' ? 'Ultimate Hunt' : isSharedRun(r) ? 'Shared Bingo' : 'Bingo') + '</td><td class="w"' + (winnersOf(r).length === 1 ? ' style="--pc:' + pc(winnersOf(r)[0]) + '"' : '') + '>' + winnerCell(r) + '</td>' +
         PL.map(function (p) { var x = pl[p.id]; if (!x) return '<td>–</td>'; return '<td>' + (r.mode === 'hunt' ? (x.total + ' ults · ' + x.done + '/' + N) : (x.done + (isSharedRun(r) ? ' ticks · ' : '/25 · ') + (x.bingos || 0) + ' bingo' + (x.bingos === 1 ? '' : 's'))) + '</td>'; }).join('') + '</tr>';
     }).join('') + '</tbody></table></div>';
@@ -473,6 +482,7 @@ img { max-width: 100%; }
         ['Average squares ticked (own card)', s.own ? avg(s.done, s.own) + ' / 25' : '–'], ['Average bingos (own card)', avg(s.bingos, s.own)], ['Most squares in a round', s.best || '–']
       ]);
     }).join('') + '</div>';
+    html += '<p class="hint" style="margin-top:10px">A round only counts as played for someone who ticked at least one square in it.</p>';
     html += playerCards('Most ticked challenges', 'How often a challenge was ticked on this player\'s own card at the end of a round.', function (p) { var m = b.per[p].ticks; return barList(topList(m, 6), m, pc(p), false); });
     if (b.shared.n) html += '<section class="sec"><h3>Shared card</h3><p class="hint">Average over ' + b.shared.n + ' saved rounds: ' + avg(b.shared.done, b.shared.n) + ' of 25 squares and ' + avg(b.shared.bingos, b.shared.n) + ' bingos.</p></section>';
     html += '<section class="sec"><h3>Saved rounds</h3>' + recentTable(b.runs.slice(0, 15)) + '</section>';
