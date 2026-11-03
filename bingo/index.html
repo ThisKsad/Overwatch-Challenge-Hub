@@ -233,7 +233,7 @@ img { max-width: 100%; }
   </header>
 
   <section class="winner" id="winner" hidden aria-live="polite">
-    <span class="w-tag">Round won</span>
+    <span class="w-tag">Own cards &middot; round won</span>
     <h2 id="winnerName"></h2>
     <p id="winnerText"></p>
     <div class="w-rows" id="winnerRows"></div>
@@ -274,6 +274,16 @@ img { max-width: 100%; }
       <button class="btn" type="button" data-act="clear" data-kind="shared">Clear ticks</button>
       <button class="btn primary" type="button" data-act="draw" data-kind="shared">Draw new card</button>
     </div>
+    <section class="winner" id="sWinner" hidden aria-live="polite">
+      <span class="w-tag">Shared card &middot; bingo</span>
+      <h2 id="sWinnerName"></h2>
+      <p id="sWinnerText"></p>
+      <div class="w-rows" id="sWinnerRows"></div>
+      <div class="w-actions">
+        <button class="btn primary" type="button" id="saveShared">Save result &amp; new shared card</button>
+        <button class="linkish" type="button" id="keepShared">Keep playing</button>
+      </div>
+    </section>
     <div class="tally" id="tally"></div>
     <div class="board" id="sharedBoard"></div>
     <p class="hint">One card for the whole group. Pick who you are, then tap a square you completed. Several people can tick the same square: each tap adds or removes only you, and every initial stays on it.</p>
@@ -585,14 +595,12 @@ img { max-width: 100%; }
     if (changed) render();
     checkRelease();
     if (first) {
-      /* A short-lived version counted a shared-card bingo as a group result ('tie'). Hand such a claim to a real player. */
+      /* A short-lived version let the shared card claim the own-card round, once as a group result ('tie'). Release that claim. */
       if (state.round.winner === 'tie' && state.round.how === 'bingo') {
         state.round = { winner: null, how: null };
         enqueue(function () { return sb.rpc('round_release', { p_mode: 'bingo', p_winner: 'tie' }); });
         renderWinner();
       }
-      /* A bingo that is already on a card (e.g. on the shared card from before this fix) still gets its save button. */
-      if (!state.round.winner) { var has = PLAYERS.filter(function (p) { return hasBingo(p.id); })[0]; if (has) claimWin(has.id); }
     }
   }
   function loadAll() {
@@ -722,7 +730,7 @@ img { max-width: 100%; }
     $('actor').innerHTML = PLAYERS.map(function (p) {
       return '<button type="button" class="pill" data-actor="' + p.id + '" aria-pressed="' + (state.actor === p.id ? 'true' : 'false') + '" style="--pc:' + pcolor(p.id) + '"><i></i>' + p.name + '</button>';
     }).join('');
-    var card = state.shared, d = doneShared(card), info = bingoInfo(d);
+    var card = state.shared, d = doneShared(card), info = sharedLineInfo();
     $('sharedScore').innerHTML = 'Shared card<span>' + countTrue(d) + ' of ' + SIZE + ' done &middot; ' + bingoWord(info.n) + '</span>';
     $('tally').innerHTML = PLAYERS.map(function (p) {
       var n = card.cells.filter(function (x) { return x.by.indexOf(p.id) >= 0; }).length;
@@ -821,7 +829,7 @@ img { max-width: 100%; }
   }
   function render() {
     if (!loaded) { renderTabs(); return; }
-    renderWinner();
+    renderWinner(); renderSharedWinner();
     var ae = document.activeElement, keep = null;
     if (ae && ae.closest) {
       var cell = ae.closest('.cell');
@@ -840,11 +848,20 @@ img { max-width: 100%; }
   function sharedBingos(pid) {
     return state.shared ? bingoInfo(state.shared.cells.map(function (x) { return x.by.indexOf(pid) >= 0; })).n : 0;
   }
-  function hasBingo(pid) {
-    return (state.own[pid] && bingoInfo(doneOwn(state.own[pid])).n > 0) || sharedBingos(pid) > 0;
+  /* Lines on the shared card that one player completed alone. Lines filled by several players together are no bingo. */
+  function sharedLineInfo() {
+    var inLine = [], n = 0, i, mine = {};
+    for (i = 0; i < SIZE; i++) inLine.push(false);
+    PLAYERS.forEach(function (p) { mine[p.id] = state.shared.cells.map(function (x) { return x.by.indexOf(p.id) >= 0; }); });
+    LINES.forEach(function (L) {
+      if (PLAYERS.some(function (p) { return L.every(function (k) { return mine[p.id][k]; }); })) { n++; L.forEach(function (k) { inLine[k] = true; }); }
+    });
+    return { n: n, inLine: inLine };
   }
-  /* Everyone with a bingo wins the round: on their own card, or with their own ticks on the shared card.
-     The claimed winner counts even if the cards are not loaded. */
+  function sharedWinners() { return state.shared ? PLAYERS.filter(function (p) { return sharedBingos(p.id) > 0; }).map(function (p) { return p.id; }) : []; }
+  function hasBingo(pid) { return !!state.own[pid] && bingoInfo(doneOwn(state.own[pid])).n > 0; }
+  /* The own cards and the shared card are two separate game variants with their own rounds.
+     Own cards: everyone with a bingo on their own card wins. The claimed winner counts even if the cards are not loaded. */
   function roundWinners() {
     var w = state.round.winner;
     if (!w || w === 'tie') return [];
@@ -859,18 +876,59 @@ img { max-width: 100%; }
   function renderWinner() {
     var w = state.round.winner, box = $('winner');
     if (!w) { dismissed = null; box.hidden = true; return; }
-    box.hidden = dismissed === w;
+    box.hidden = dismissed === w || state.tab === 'shared';
     if (box.hidden) return;
     var ws = roundWinners();
     $('winnerName').textContent = w === 'tie' ? 'Draw' : nameList(ws) + (ws.length > 1 ? ' win' : ' wins');
     $('winnerText').textContent = ws.length > 1
       ? 'More than one player has a bingo this round, so it counts as a win for each of them. Save the result to the all-time stats and start a new round, or keep playing.'
-      : 'First bingo this round, on their own card or with their own ticks on the shared card. Anyone else who gets a bingo before you save also wins. Save the result to the all-time stats and start a new round, or keep playing.';
+      : 'First bingo on their own card this round. Anyone else who gets a bingo before you save also wins. Save the result to the all-time stats and start a new round, or keep playing.';
     $('winnerRows').innerHTML = PLAYERS.map(function (p) {
-      var s = summary(state.own[p.id], 'own'), sh = sharedBingos(p.id);
-      return '<span class="' + (ws.indexOf(p.id) >= 0 ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + '/' + SIZE + ' &middot; ' + bingoWord(s.bingos) + (sh ? ' &middot; ' + sh + ' on shared' : '') + '</span>';
+      var s = summary(state.own[p.id], 'own');
+      return '<span class="' + (ws.indexOf(p.id) >= 0 ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + '/' + SIZE + ' &middot; ' + bingoWord(s.bingos) + '</span>';
     }).join('');
   }
+  /* Shared card: whoever has a bingo with their own ticks alone wins. It needs no claim, the card itself holds the result. */
+  var sDismissed = null;
+  function sharedSummary(pid) {
+    var mine = state.shared.cells.filter(function (x) { return x.by.indexOf(pid) >= 0; });
+    return { done: mine.length, bingos: sharedBingos(pid), ticked: mine.map(function (x) { return x.t; }) };
+  }
+  function renderSharedWinner() {
+    var ws = sharedWinners(), key = ws.join(','), box = $('sWinner');
+    if (!ws.length) { sDismissed = null; box.hidden = true; return; }
+    box.hidden = sDismissed === key;
+    if (box.hidden) return;
+    $('sWinnerName').textContent = nameList(ws) + (ws.length > 1 ? ' win' : ' wins');
+    $('sWinnerText').textContent = (ws.length > 1 ? 'More than one player has a bingo with their own ticks, so it counts as a win for each of them.' : 'Bingo with their own ticks on the shared card. Anyone else who gets one before you save also wins.') +
+      ' Saving counts it in the all-time stats and draws a new shared card. The own cards are not touched.';
+    $('sWinnerRows').innerHTML = PLAYERS.map(function (p) {
+      var s = sharedSummary(p.id);
+      return '<span class="' + (ws.indexOf(p.id) >= 0 ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + ' ticks &middot; ' + bingoWord(s.bingos) + '</span>';
+    }).join('');
+  }
+  $('keepShared').addEventListener('click', function () { sDismissed = sharedWinners().join(','); renderSharedWinner(); });
+  $('saveShared').addEventListener('click', function () {
+    if (!loaded || !sb || !sharedWinners().length) return;
+    var btn = $('saveShared'); btn.disabled = true;
+    var fail = function () { btn.disabled = false; toast('Could not save the result. Please try again.'); };
+    /* Check the stored card first, so a result someone else just saved is not saved twice. */
+    sb.from('bingo_cards').select('cells').eq('card', 'shared').maybeSingle().then(function (res) {
+      if (res.error) { fail(); return; }
+      var cells = res.data && Array.isArray(res.data.cells) ? res.data.cells : [];
+      var same = JSON.stringify(cells.map(function (x) { return [x.t, (x.by || []).slice().sort()]; })) === JSON.stringify(state.shared.cells.map(function (x) { return [x.t, x.by.slice().sort()]; }));
+      if (!same) { btn.disabled = false; toast('The shared card just changed. Check it and save again.'); loadAll(); return; }
+      var ws = sharedWinners(), data = { variant: 'shared', how: 'bingo', players: {}, winners: ws, shared: summary(state.shared, 'shared') };
+      PLAYERS.forEach(function (p) { data.players[p.id] = sharedSummary(p.id); });
+      return sb.from('game_results').insert({ mode: 'bingo', winner: ws[0], data: data }).then(function (ins) {
+        btn.disabled = false;
+        if (ins.error) { toast('Could not save the result. Please try again.'); return; }
+        var nc = drawCells(); if (nc) state.shared.cells = nc; else wipe(state.shared);
+        sDismissed = null; save(); render();
+        toast('Result saved. New shared card!');
+      }, fail);
+    }, fail);
+  });
   /* Misclick protection: if the winner no longer holds a bingo on either card, release the claim.
      If another player still has a bingo, the round passes to them. */
   function checkRelease() {
@@ -889,7 +947,7 @@ img { max-width: 100%; }
   $('keepPlaying').addEventListener('click', function () { dismissed = state.round.winner; renderWinner(); });
   $('saveRound').addEventListener('click', function () {
     if (!loaded || !state.round.winner) return;
-    var data = { players: {}, shared: summary(state.shared, 'shared'), winners: roundWinners() };
+    var data = { variant: 'own', players: {}, winners: roundWinners() };
     PLAYERS.forEach(function (p) { data.players[p.id] = summary(state.own[p.id], 'own'); });
     $('saveRound').disabled = true;
     sb.rpc('round_finish', { p_mode: 'bingo', p_data: data }).then(function (res) {
@@ -897,8 +955,6 @@ img { max-width: 100%; }
       if (res.error) { toast('Could not save the result. Please try again.'); return; }
       if (res.data === true) {
         PLAYERS.forEach(function (p) { var cells = drawCells(); if (cells) state.own[p.id].cells = cells; else wipe(state.own[p.id]); });
-        /* A shared card with a bingo is saved with the round, so it starts over too. */
-        if (PLAYERS.some(function (p) { return sharedBingos(p.id) > 0; })) { var sc = drawCells(); if (sc) state.shared.cells = sc; else wipe(state.shared); }
         state.round = { winner: null, how: null }; save(); render();
         toast('Result saved. New round, new cards!');
       } else { toast('This result was already saved.'); }
@@ -957,19 +1013,16 @@ img { max-width: 100%; }
   $('sharedBoard').addEventListener('click', function (e) {
     var b = e.target.closest('.cell'); if (!b) return;
     var card = state.shared, cell = card.cells[+b.dataset.i];
-    var before = bingoInfo(doneShared(card)).n, mine = sharedBingos(state.actor), had = hasBingo(state.actor);
+    var mine = sharedBingos(state.actor), ws0 = sharedWinners().length;
     var at = cell.by.indexOf(state.actor);
     if (at >= 0) cell.by.splice(at, 1); else cell.by.push(state.actor);
     cell.by = PLAYERS.map(function (p) { return p.id; }).filter(function (id) { return cell.by.indexOf(id) >= 0; });
     save(); render();
-    var after = bingoInfo(doneShared(card)).n;
     var mineAfter = sharedBingos(state.actor);
-    if (mineAfter < mine) checkRelease();
     if (mineAfter > mine) {
-      if (!state.round.winner) claimWin(state.actor);
-      else if (!had && roundWinners().length > 1) { dismissed = null; renderWinner(); toast('Bingo for ' + pname(state.actor) + ' on the shared card! That counts as a win this round too.'); }
-      else toast('Bingo for ' + pname(state.actor) + ' on the shared card! ' + bingoWord(mineAfter) + ' with their own ticks now.');
-    } else if (after > before) toast('Bingo! The group has ' + bingoWord(after) + ' now.');
+      sDismissed = null; renderSharedWinner();
+      toast(mine === 0 && ws0 > 0 ? 'Bingo for ' + pname(state.actor) + '! That counts as a win on the shared card too.' : 'Bingo for ' + pname(state.actor) + '! ' + bingoWord(mineAfter) + ' with their own ticks now.');
+    }
   });
   $('ownSum').addEventListener('click', function (e) {
     var b = e.target.closest('[data-pid]'); if (!b) return;
