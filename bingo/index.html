@@ -826,25 +826,43 @@ img { max-width: 100%; }
     var d = kind === 'own' ? doneOwn(card) : doneShared(card);
     return { done: countTrue(d), bingos: bingoInfo(d).n, ticked: card.cells.filter(function (x, i) { return d[i]; }).map(function (x) { return x.t; }) };
   }
+  /* Everyone with a bingo on their own card wins the round. The claimed winner counts even if the cards are not loaded. */
+  function roundWinners() {
+    var w = state.round.winner;
+    if (!w || w === 'tie') return [];
+    var ids = PLAYERS.filter(function (p) { return state.own[p.id] && bingoInfo(doneOwn(state.own[p.id])).n > 0; }).map(function (p) { return p.id; });
+    if (ids.indexOf(w) < 0) ids.unshift(w);
+    return PLAYERS.map(function (p) { return p.id; }).filter(function (id) { return ids.indexOf(id) >= 0; });
+  }
+  function nameList(ids) {
+    var n = ids.map(pname);
+    return n.length > 1 ? n.slice(0, -1).join(', ') + ' & ' + n[n.length - 1] : n.join('');
+  }
   function renderWinner() {
     var w = state.round.winner, box = $('winner');
     if (!w) { dismissed = null; box.hidden = true; return; }
     box.hidden = dismissed === w;
     if (box.hidden) return;
-    $('winnerName').textContent = w === 'tie' ? 'Draw' : pname(w) + ' wins';
-    $('winnerText').textContent = 'First bingo on their own card this round. Save the result to the all-time stats and start a new round, or keep playing.';
+    var ws = roundWinners();
+    $('winnerName').textContent = w === 'tie' ? 'Draw' : nameList(ws) + (ws.length > 1 ? ' win' : ' wins');
+    $('winnerText').textContent = ws.length > 1
+      ? 'More than one player has a bingo this round, so it counts as a win for each of them. Save the result to the all-time stats and start a new round, or keep playing.'
+      : 'First bingo on their own card this round. Anyone else who gets a bingo before you save also wins. Save the result to the all-time stats and start a new round, or keep playing.';
     $('winnerRows').innerHTML = PLAYERS.map(function (p) {
       var s = summary(state.own[p.id], 'own');
-      return '<span class="' + (p.id === w ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + '/' + SIZE + ' &middot; ' + bingoWord(s.bingos) + '</span>';
+      return '<span class="' + (ws.indexOf(p.id) >= 0 ? 'win' : '') + '">' + esc(p.name) + ': ' + s.done + '/' + SIZE + ' &middot; ' + bingoWord(s.bingos) + '</span>';
     }).join('');
   }
-  /* Misclick protection: if the winner's own card no longer holds a bingo, release the claim. */
+  /* Misclick protection: if the winner's own card no longer holds a bingo, release the claim.
+     If another player still has a bingo, the round passes to them. */
   function checkRelease() {
     var w = state.round.winner;
     if (!w || w === 'tie' || state.round.how !== 'bingo' || !state.own[w]) return;
     if (bingoInfo(doneOwn(state.own[w])).n > 0) return;
-    state.round = { winner: null, how: null }; dismissed = null; renderWinner();
+    var next = PLAYERS.filter(function (p) { return p.id !== w && state.own[p.id] && bingoInfo(doneOwn(state.own[p.id])).n > 0; })[0];
+    state.round = { winner: null, how: null }; dismissed = null;
     enqueue(function () { return sb.rpc('round_release', { p_mode: 'bingo', p_winner: w }); });
+    if (next) claimWin(next.id); else renderWinner();
   }
   function claimWin(pid) {
     state.round = { winner: pid, how: 'bingo' }; dismissed = null; renderWinner();
@@ -853,7 +871,7 @@ img { max-width: 100%; }
   $('keepPlaying').addEventListener('click', function () { dismissed = state.round.winner; renderWinner(); });
   $('saveRound').addEventListener('click', function () {
     if (!loaded || !state.round.winner) return;
-    var data = { players: {}, shared: summary(state.shared, 'shared') };
+    var data = { players: {}, shared: summary(state.shared, 'shared'), winners: roundWinners() };
     PLAYERS.forEach(function (p) { data.players[p.id] = summary(state.own[p.id], 'own'); });
     $('saveRound').disabled = true;
     sb.rpc('round_finish', { p_mode: 'bingo', p_data: data }).then(function (res) {
@@ -912,7 +930,8 @@ img { max-width: 100%; }
     var after = bingoInfo(doneOwn(card)).n;
     if (after < before) checkRelease();
     if (after > before) {
-      if (!state.round.winner) claimWin(state.ownSel); else toast('Bingo for ' + pname(state.ownSel) + '! ' + bingoWord(after) + ' now.');
+      if (!state.round.winner) claimWin(state.ownSel); else if (before === 0 && roundWinners().length > 1) { dismissed = null; renderWinner(); toast('Bingo for ' + pname(state.ownSel) + '! That counts as a win this round too.'); }
+      else toast('Bingo for ' + pname(state.ownSel) + '! ' + bingoWord(after) + ' now.');
     }
   });
   $('sharedBoard').addEventListener('click', function (e) {
